@@ -1,0 +1,625 @@
+# -*- coding: utf-8 -*-
+
+# Import module PyQt et API PyQGIS
+from PyQt5.QtCore import *
+from PyQt5.QtWidgets import *
+from PyQt5 import uic
+from PyQt5.QtGui import *
+from qgis.core import *
+from qgis import processing
+import os
+# import des librairies nécessaires à la lecture de données géospatiales
+#import geopandas as gpd
+import json
+# import librairie nécessaire à certains calculs
+import math
+import statistics
+
+# import librairie manipulation raster et gpkg
+import rasterio
+from rasterio.transform import from_origin
+import numpy as np
+import subprocess
+from osgeo import gdal, ogr, osr
+import sqlite3
+
+# appel emplacement des fichiers de stockage des sorties temporaires -- style et temp
+temp_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "temp")
+qml_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "style")
+
+# Lien entre traitement.py et traitement.ui
+ui_path = os.path.dirname(os.path.abspath(__file__))
+ui_path = os.path.join(ui_path, "ui")
+form_traitement, _ = uic.loadUiType(os.path.join(ui_path, "traitement.ui"))
+
+
+# Mise en place de la classe TraitementWidget
+# Va regrouper l'ensemble des fonctions relatives aux traitements à réaliser
+class TraitementWidget(QDialog, form_traitement):
+    def __init__(self, iface):
+        QDialog.__init__(self)
+        # création de l'interface de la fenêtre QGIS
+        self.setupUi(self)
+        # ajustement de la taille de la fenêtre pour qu'elle soit fixe
+        self.setFixedSize(600, 700)
+        # nom donné à la fenêtre
+        self.setWindowTitle("Top'Eau - Analyse raster : différence entre le niveau d'eau et la parcelle")
+
+        # Bouton "OK / Annuler"
+        self.terminer.rejected.connect(self.reject)
+
+        # Bouton "Récupérer la valeur minimale d'élévation au sein de la zone d'étude"
+        self.recuperer.clicked.connect(self.chargement_donnees_raster)
+
+        # Bouton "Générer le raster"
+        self.generer.clicked.connect(self.chargement_raster)
+
+        # boutons à cocher ("checkbox")
+        self.oui = self.findChild(QCheckBox, "oui")
+        self.non = self.findChild(QCheckBox, "non")
+        # connexion des checkbox pour qu'ils soient mutuellement exclusifs
+        self.oui.toggled.connect(self.on_checkbox_toggled)
+        self.non.toggled.connect(self.on_checkbox_toggled)
+
+        # connexion de la barre de progression
+        self.progressBar.setValue(0)
+
+        # initialisation de valeur_min pour qu'elle puisse être utilisée dans toutes les fonctions
+        self.valeur_min = None
+
+        # initialisation du niveau d'eau à étudier pour l'utiliser dans les différentes fonctions
+        self.current_level = None
+
+    # instauration d'une fonction assurant l'exclusivité des boutons oui & non
+    def on_checkbox_toggled(self):
+        # si l'un est coché, décocher l'autre
+        if self.sender() == self.oui and self.oui.isChecked():
+            self.non.setChecked(False)
+            # désactiver le QDoubleSpinBox min (inputMin) quand oui est sélectionné
+            self.inputMin.setEnabled(False)
+        elif self.sender() == self.non and self.non.isChecked():
+            self.oui.setChecked(False)
+            # activer le QDoubleSpinBox min (inputMin) quand non est sélectionné
+            self.inputMin.setEnabled(True)
+
+    def reject(self):
+        QDialog.reject(self)
+        return
+
+
+    # première étape de l'analyse
+    # fonction qui va permettre l'affichage des informations relatives à la zone d'étude
+    def chargement_donnees_raster(self):
+
+        # 1. découpage du raster en fonction de la ZE
+
+        # 1.1. chargement du raster sélectionné par l'utilisateur dans une variable qui sera récupérée par l'algo de découpage
+        selected_raster = self.inputRaster.filePath()
+
+        # 1.2. chargement du vecteur sélectionné par l'utilisateur dans une variable qui sera récupérée par l'algo de découpage
+        selected_vecteur = self.inputVecteur.filePath()
+
+        # création d'un fichier temporaire
+        path_clip = os.path.join(temp_path, "temp_layer_clip.tif")
+
+        # 1.3. ajout de l'algorithme gdal "Découper un raster selon une couche de masque"
+        processing.run("gdal:cliprasterbymasklayer", {
+            'INPUT': selected_raster,  # appel à la variable récupérant le raster sélectionné
+            'MASK': selected_vecteur,  # appel à la variable récupérant le vecteur sélectionné
+            'SOURCE_CRS': None,
+            'TARGET_CRS': QgsCoordinateReferenceSystem('EPSG:2154'), # pousser le SCR pour être sûr
+            'TARGET_EXTENT': None,
+            'NODATA': None,
+            'ALPHA_BAND': False,  # indiquer 'True' si volonté de générer une bande de transparence
+            'CROP_TO_CUTLINE': True,
+            'KEEP_RESOLUTION': False,
+            'SET_RESOLUTION': False,
+            'X_RESOLUTION': None,
+            'Y_RESOLUTION': None,
+            'MULTITHREADING': False,
+            'OPTIONS': None,
+            'DATA_TYPE': 0,
+            'EXTRA': '',  # peut recevoir une ligne de commande indiquant des paramètres additionnels
+            'OUTPUT': path_clip
+            # appel du fichier temporaire pour afficher le résultat dans l'interface graphique de QGIS
+        })
+        # chargement du raster découpé comme une nouvelle couche QGIS
+        layer_clip = QgsRasterLayer(path_clip, f"parcelle_decoupee", "gdal")
+        # s'assurer qu'il n'y a pas d'erreur
+        if not layer_clip.isValid():
+            QMessageBox.warning(self, "Erreur", "La couche raster n'est pas valide.")
+            return
+
+
+        # 2. affichage des informations relatives à la ZE dans l'interface du plugin
+
+        # 2.1. ajout de l'algorithme natif "statistiques de zone" permettant d'avoir accès aux stats principales
+        stats = processing.run("native:zonalstatisticsfb", {
+            'INPUT': selected_vecteur,
+            'INPUT_RASTER': selected_raster,
+            'RASTER_BAND':1,
+            'COLUMN_PREFIX':'_',
+            'STATISTICS':[3,2,5,6], #mediane, moyenne, min, max
+            'OUTPUT':'TEMPORARY_OUTPUT'})
+
+        # récupération de la couche de sortie
+        output_layer = stats['OUTPUT']
+
+        # extraction des valeurs depuis les attributs de la couche
+        feature = next(output_layer.getFeatures())
+        self.valeur_min = feature['_min']
+        self.valeur_max = feature['_max']
+        self.valeur_moy = feature['_mean']
+        self.valeur_med = feature['_median']
+
+        # 2.2. affichage du résultat dans l'interface du Plugin pour que l'utilisateur connaisse la valeur
+        self.minLabel.setText(f"{self.valeur_min:.2f}m")
+        self.maxLabel.setText(f"{self.valeur_max:.2f}m")
+        self.moyLabel.setText(f"{self.valeur_moy:.2f}m")
+
+
+    # deuxième étape de l'analyse
+    # 3. générer les rasters
+    def chargement_raster(self):
+
+        # 3.1. vérification que l'utilisateur a coché une des deux options
+        # NB : si l'utilisateur n'a coché aucune des deux options, il n'y a pas de valeur minimum pour la génération
+        if self.oui is None or self.non is None:
+            QMessageBox.critical(self, "Erreur", "Il manque un paramètre obligatoire (valeur minimale).")
+            return
+
+        # 3.2. récupération des autres valeurs obligatoires saisies par l'utilisateur
+        pas = self.inputPas.value()
+        max_level = self.inputMax.value()
+
+        # 3.3. récupération de la valeur minimale en fonction des choix de l'utilisateur
+        # si "oui" est coché...
+        if self.oui.isChecked():
+            # ...utilisation de la valeur minimale du MNT récupérée juste avant
+            min_level = self.valeur_min
+            if min_level is None:
+                QMessageBox.warning(self, "Attention", "Récupérez d'abord la valeur minimale d'élévation.")
+                return
+        # si "non" est coché...
+        else:
+            # ... utilisation de la valeur spécifiée par l'utilisateur
+            min_level = self.inputMin.value()
+
+        # 3.4. calcul du nombre total de rasters à générer
+        nb_niveaux = math.ceil((max_level - min_level) / pas)
+
+        # 3.5. création d'une liste Python pour stocker les couches générées
+        couches_generees = []
+
+        # 3.6. mise en place de la boucle de génération des rasters
+        self.current_level = max_level  # on commence au niveau max et on descend
+        count = 0
+
+        # calcul du pas de progression pour la barre
+        progress_step = 100 / nb_niveaux if nb_niveaux > 0 else 0
+
+        # découpage du MNT une seule fois avant la boucle
+        self.decouper_raster()
+
+        # début de la boucle
+        while self.current_level >= min_level:
+            # mise à jour de la barre de progression en fonction du nombre de rasters générés
+            count += 1
+            progress_value = int(count * progress_step)
+            self.progressBar.setValue(progress_value)
+            QApplication.processEvents()
+
+            # création d'un fichier unique pour chaque niveau d'eau
+            nom_ze = self.nomZE.text() # récupération du nom renseigné par l'utilisateur
+            niveau_cm = int(self.current_level * 100)  # conversion en centimètres pour le nom du fichier
+            output_name = f"{nom_ze}_{niveau_cm}cm_topeau" # création d'un nom de fichier unique pour chaque fichier
+            #path_resamp = os.path.join(temp_path, f"{output_name}.tif") # création du chemin de stockage du fichier
+
+            # calcul de la différence entre le niveau d'eau et le MNT
+            raster_diff = self.calcul_niveau_eau(output_name)
+
+            # passage à l'étape suivante (ré-échantillonnage) si le calcul abien été effectué
+            if raster_diff:
+                # appel du raster ré-échantillonné à 25x25 cm avec r.resamp.stats de GRASS (fonction resample_raster)
+                resampled_raster = self.resample_raster(raster_diff, output_name)
+
+                # ajout du raster à la liste des rasters s'il a bien été ré-échantillonné
+                if resampled_raster:
+                    # ajout du raster à la liste des couches générées
+                    couches_generees.append(resampled_raster)
+
+            # passage au niveau suivant (en suivant le pas)
+            self.current_level -= pas
+
+        # mise à jour de la barre de progression à 100% à la fin de la génération des rasters
+        self.progressBar.setValue(100)
+
+        # affichage du nombre de rasters générés
+        QMessageBox.information(self, "Traitement terminé",
+                                f"{len(couches_generees)} rasters ont été générés avec succès.")
+
+        # 3.7. chargement des rasters dans le projet QGIS
+        for path_resamp in couches_generees:
+            layer_name = os.path.basename(path_resamp).replace('.tif', '')
+            layer = QgsRasterLayer(path_resamp, layer_name)
+            if layer.isValid():
+                QgsProject.instance().addMapLayer(layer)
+                # chargement du style style_classif.qml
+                style_path_resamp = os.path.join(qml_path, "style_classif.qml")
+                if os.path.exists(style_path_resamp):
+                    layer.loadNamedStyle(style_path_resamp)
+                    layer.triggerRepaint()
+            else:
+                QMessageBox.warning(self, "Erreur",
+                                    f"La/les couche/s {layer_name}/{style_path_resamp} n'est pas valide/ne sont pas valides.")
+
+
+    # étape interne à la génération des rasters
+    # fonction permettant de découper le raster
+    # la fonction est répétée automatiquement autant de fois qu'il y a de niveaux d'eau à traiter puisqu'elle est traitée par la boucle
+    def decouper_raster(self):
+        # 3.6.1. chargement du raster sélectionné par l'utilisateur
+        selected_raster = self.inputRaster.filePath()
+        # 3.6.2. chargement du vecteur sélectionné par l'utilisateur
+        selected_vecteur = self.inputVecteur.filePath()
+
+        # création d'un fichier temporaire
+        path_clip = os.path.join(temp_path, "temp_layer_clip.tif")
+
+        # 3.6.3. utilisation de l'algorithme GDAL "Découper un raster selon une couche de masque"
+        processing.run("gdal:cliprasterbymasklayer", {
+            'INPUT': selected_raster, #variable récupérant le raster sélectionné par l'utilisateur
+            'MASK': selected_vecteur, #variable récupérant le vecteur sélectionné par l'utilisateur
+            'SOURCE_CRS': None,
+            'TARGET_CRS': QgsCoordinateReferenceSystem('EPSG:2154'), #permet de s'assurer que le raster découpé sera bien en 2154
+            'TARGET_EXTENT': None,
+            'NODATA': None, #permet aux pixels à valeur nulle de ne pas être comptés dans l'emprise du raster
+            'ALPHA_BAND': False,
+            'CROP_TO_CUTLINE': True,
+            'KEEP_RESOLUTION': False,
+            'SET_RESOLUTION': False,
+            'X_RESOLUTION': None,
+            'Y_RESOLUTION': None,
+            'MULTITHREADING': False,
+            'OPTIONS': None,
+            'DATA_TYPE': 0,
+            'EXTRA': '',
+            'OUTPUT': path_clip #sortie permanente en temp pour que l'algorithme suivant puisse avoir une couche input
+        })
+
+
+    # étape interne à la génération des rasters
+    # fonction permettant de calculer la différence entre le niveau d'eau à étudier et le raster relatif à l'élévation
+    # la fonction est répétée automatiquement autant de fois qu'il y a de niveaux d'eau à traiter puisqu'elle est traitée par la boucle
+    def calcul_niveau_eau(self, output_path):
+
+        # 3.6.1. utilisation de self.current_level pour le niveau d'eau
+        niveau_eau = self.current_level
+
+        # 3.6.2. chargement du raster découpé précédemment
+        path_clip = os.path.join(temp_path, "temp_layer_clip.tif")
+        layer_clip = QgsRasterLayer(path_clip, f"parcelle_decoupee", "gdal")
+
+        # vérification de la validité de la couche
+        if not layer_clip.isValid():
+            QMessageBox.warning(self, "Erreur", "La couche raster découpée n'est pas valide.")
+            return None
+
+        # création d'un fichier temporaire pour le résultat généré par la calculatrice raster
+        path_diff = os.path.join(temp_path, f"diff_{int(niveau_eau * 100)}.tif")
+
+        # création d'une expression raster unique avec le niveau d'eau à étudier
+        expression = f"{niveau_eau} - \"parcelle_decoupee@1\""
+
+        # 3.6.3. utilisation de la "Calculatrice raster"
+        processing.run("native:rastercalc", {
+            'LAYERS': [layer_clip],
+            'EXPRESSION': expression,
+            'EXTENT': layer_clip.extent(),
+            'CELL_SIZE': layer_clip.rasterUnitsPerPixelX(),
+            'CRS': layer_clip.crs(),
+            'OUTPUT': path_diff
+        })
+
+        # création d'un fichier temporaire pour la reclassification
+        path_reclass = os.path.join(temp_path, f"reclass_{int(niveau_eau * 100)}.tif")
+
+        # 3.6.4. utilisation de l'outil natif "Reclassification" pour supprimer les valeurs négatives
+        processing.run("native:reclassifybytable", {
+            'INPUT_RASTER': path_diff,
+            'RASTER_BAND': 1,
+            'TABLE': ['-99', '0', 'nan'],  # remplacer les valeurs négatives par NaN
+            'NO_DATA': -9999,
+            'RANGE_BOUNDARIES': 0,
+            'NODATA_FOR_MISSING': False,
+            'DATA_TYPE': 5,
+            'CREATE_OPTIONS': None,
+            'OUTPUT': path_reclass
+        })
+        return path_reclass
+
+
+    # étape interne à la génération des rasters
+    # fonction permettant de ré-échantillonné le raster pour alléger et la donnée
+    # la fonction est répétée automatiquement autant de fois qu'il y a de niveaux d'eau à traiter puisqu'elle est traitée par la boucle
+    def resample_raster(self, input_path, output_name):
+
+        # création d'un fichier final pour le raster rééchantillonné
+        path_resamp = os.path.join(temp_path, f"{output_name}_resamp.tif")
+
+        # vérification de la validité du chemin d'entrée
+        layer_reclass = QgsRasterLayer(input_path, "reclass_layer")
+        if not layer_reclass.isValid():
+            QMessageBox.warning(self, "Erreur", f"La couche à rééchantillonner n'est pas valide: {input_path}")
+            return None
+
+        # 3.6.1. utilisation de l'algorithme GRASS "r.resamp.Stats" pour le ré-échantillonnage
+        processing.run("grass:r.resamp.stats", {
+            'input': layer_reclass,
+            'method': 1,  #mediane
+            'quantile': 0.5,
+            '-n': True,
+            '-w': False,
+            'output': path_resamp,
+            'GRASS_REGION_PARAMETER': None,
+            'GRASS_REGION_CELLSIZE_PARAMETER': 0.25,  # résolution de 25cm
+            'GRASS_RASTER_FORMAT_OPT': '',
+            'GRASS_RASTER_FORMAT_META': ''
+        })
+
+        # calcul automatique de la surface après création du raster
+        if os.path.exists(path_resamp):
+            # calcul de la surface totale
+            surface_totale, _, volume_total = self.calculer_stats_raster(path_resamp)
+
+            if surface_totale is not None:
+                try:
+                    # 3.6.2. conversion en GPKG AVANT la création de table
+                    gpkg_path = self.convertir_en_geopackage(path_resamp)
+
+                    if gpkg_path:
+                        # stockage des résultats dans la table GPKG avec la surface calculée
+                        self.creation_table_gpkg(gpkg_path, surface_totale, volume_total,
+                                                 self.valeur_min,
+                                                 self.valeur_moy,
+                                                 self.valeur_max,
+                                                 path_resamp)
+                        QgsMessageLog.logMessage(
+                            f"Table créée pour {output_name}", "Top'Eau",
+                            Qgis.Info)
+
+                except Exception as e:
+                    QgsMessageLog.logMessage(f"Erreur lors de la création de table pour {output_name}: {str(e)}",
+                                             "Top'Eau", Qgis.Warning)
+            else:
+                QgsMessageLog.logMessage(f"Impossible de calculer la surface pour {output_name}", "Top'Eau",
+                                         Qgis.Warning)
+        else:
+            QgsMessageLog.logMessage(f"Le fichier raster {path_resamp} n'existe pas", "Top'Eau", Qgis.Warning)
+            return None
+
+        return path_resamp
+
+
+    # étape interne à la génération des rasters
+    # fonction permettant d'assigner les calculs de surface et volume aux pixels non nuls du raster généré
+    # la fonction est répétée automatiquement autant de fois qu'il y a de niveaux d'eau à traiter puisqu'elle est traitée par la boucle
+    def calculer_stats_raster(self, path_resamp):
+
+        try:
+            # traitement du raster avec GDAL
+            dataset = gdal.Open(path_resamp)
+            if dataset is None:
+                raise Exception(f"Impossible d'ouvrir le raster {path_resamp}")
+
+            # 3.6.1. récupération des informations du raster
+            band = dataset.GetRasterBand(1)
+            geo_transform = dataset.GetGeoTransform()
+
+            # 3.6.2 récupération de la résolution des pixels (en mètres si CRS en mètres)
+            pixel_width = abs(geo_transform[1])  # largeur d'un pixel
+            pixel_height = abs(geo_transform[5])  # hauteur d'un pixel
+            surface_pixel = pixel_width * pixel_height  # surface d'un pixel en m²
+
+            # 3.6.3. lecture des données du raster
+            data = band.ReadAsArray()
+            nodata_value = band.GetNoDataValue()
+
+            # 3.6.4. comptage des pixels non-nuls
+            if nodata_value is not None:
+                pixels_valides = np.count_nonzero(~np.isnan(data) & (data != nodata_value))
+            else:
+                pixels_valides = np.count_nonzero(~np.isnan(data) & (data != 0))
+
+            # 3.6.5. calcul de la surface totale
+            surface_totale = pixels_valides * surface_pixel
+
+            # 3.6.6. calcul du volume : somme des hauteurs d'eau valides × surface d'un pixel
+            if nodata_value is not None:
+                mask = (~np.isnan(data)) & (data != nodata_value)
+            else:
+                mask = (~np.isnan(data)) & (data != 0)
+
+            pixels_valides = np.count_nonzero(mask)
+            surface_totale = pixels_valides * surface_pixel
+            volume_total = np.sum(data[mask]) * surface_pixel
+
+            return surface_totale, pixels_valides, volume_total
+
+
+        except Exception as e:
+            QgsMessageLog.logMessage(f"Erreur calcul surface raster: {str(e)}", "Top'Eau", Qgis.Critical)
+            return None, None, None
+        finally:
+            dataset = None
+
+
+    # étape interne à la génération des rasters
+    # fonction permettant de créer une table dans le GPKG
+    # la fonction est répétée automatiquement autant de fois qu'il y a de niveaux d'eau à traiter puisqu'elle est traitée par la boucle
+    def creation_table_gpkg(self, gpkg_path, surface_totale, volume_total, valeur_min, valeur_max, valeur_moy, valeur_med):
+
+        # création d'un chemin pour ces GPKG
+        base_name = os.path.basename(gpkg_path).replace('.gpkg', '')
+
+        # 3.6.1. récupération du fichier GPKG existant
+        output_gpkg_path = self.outputGpkg.filePath()
+        gpkg_path = os.path.join(output_gpkg_path, f"{base_name}.gpkg")
+
+        # vérification de l'existence du GPKG
+        if not os.path.exists(gpkg_path):
+            raise FileNotFoundError(f"Le GeoPackage {gpkg_path} n'existe pas")
+
+        try:
+
+            # connexion SQLite directe au GeoPackage
+            conn = sqlite3.connect(gpkg_path)
+            cursor = conn.cursor()
+
+            # vérification de l'existence de la table
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='hauteur_eau'")
+            if cursor.fetchone():
+                QgsMessageLog.logMessage("La table hauteur_eau existe déjà pour ce raster", "Top'Eau", Qgis.Info)
+                return
+
+            # création de la table
+            cursor.execute('''
+                   CREATE TABLE hauteur_eau (
+                       id INTEGER PRIMARY KEY AUTOINCREMENT, 
+                       niveau_eau REAL,
+                       zone_etude TEXT,
+                       surface_eau_m2 REAL,
+                       volume_eau_m3 REAL,
+                       min_parcelle REAL,
+                       max_parcelle REAL,
+                       moyenne_parcelle REAL,
+                       mediane_parcelle REAL
+                   )
+               ''')
+
+            # insertion des données en SQL
+            cursor.execute('''
+                   INSERT INTO hauteur_eau 
+                   (niveau_eau, 
+                   zone_etude, 
+                   surface_eau_m2, 
+                   volume_eau_m3, 
+                   min_parcelle,
+                   max_parcelle,
+                   moyenne_parcelle,
+                   mediane_parcelle) 
+                   VALUES 
+                   (?, 
+                   ?, 
+                   ?, 
+                   ?,
+                   ?,
+                   ?,
+                   ?, 
+                   ?)
+               ''', (
+                self.current_level,
+                self.nomZE.text(),
+                round(surface_totale, 2),
+                round(volume_total, 2),
+                round(self.valeur_min, 2),
+                round(self.valeur_max, 2),
+                round(self.valeur_moy, 2),
+                round(self.valeur_med, 2)
+            ))
+
+            conn.commit()
+            QgsMessageLog.logMessage(f"Table SQLite créée avec succès dans {base_name}", "Top'Eau", Qgis.Success)
+
+        except Exception as e:
+            QgsMessageLog.logMessage(f"Erreur SQLite: {str(e)}", "Top'Eau", Qgis.Critical)
+            raise e
+        finally:
+            if 'conn' in locals():
+                conn.close()
+
+
+    # étape interne à la génération des rasters
+    # fonction permettant de formater les TIFF pour qu'ils passent en GeoPackage
+    # la fonction est répétée automatiquement autant de fois qu'il y a de niveaux d'eau à traiter puisqu'elle est traitée par la boucle
+    def convertir_en_geopackage(self, path_resamp):
+
+        # création d'un chemin pour ces GPKG
+        base_name = os.path.basename(path_resamp).replace('.tif', '')
+        # 3.6.1. récupération de l'output choisi par l'utilisateur
+        output_gpkg_path = self.outputGpkg.filePath()
+        gpkg_path = os.path.join(output_gpkg_path, f"{base_name}.gpkg")
+
+        # 3.6.2. utilisation de l'API GDAL pour la conversion
+        try:
+            # ouverture du raster source avec GDAL
+            src_ds = gdal.Open(path_resamp)
+            if src_ds is None:
+                QMessageBox.warning(self, "Erreur", f"Impossible d'ouvrir le fichier source: {path_resamp}")
+                return None
+
+            # lecture des métadonnées du raster source
+            band = src_ds.GetRasterBand(1)
+            data_type = band.DataType
+            xsize = src_ds.RasterXSize
+            ysize = src_ds.RasterYSize
+            geo_transform = src_ds.GetGeoTransform()
+            projection = src_ds.GetProjection()
+
+            # log des infos du raster pour le débogage si besoin
+            QgsMessageLog.logMessage(f"Type de données original: {gdal.GetDataTypeName(data_type)}", "Top'Eau",
+                                     Qgis.Info)
+            QgsMessageLog.logMessage(f"Dimensions: {xsize}x{ysize}", "Top'Eau", Qgis.Info)
+
+            # conversion du raster via l'ajout d'un driver GDAL
+            driver = gdal.GetDriverByName('GPKG')
+            if driver is None:
+                QMessageBox.warning(self, "Erreur", "Le pilote GPKG n'est pas disponible dans cette installation GDAL")
+                return None
+
+            # configuration des options de création du GPKG
+            options = ['RASTER_TABLE=' + base_name]
+
+            # création du GeoPackage
+            # modifier le type de données à Float32 qui est compatible avec GeoPackage
+            dst_ds = driver.Create(gpkg_path, xsize, ysize, 1, gdal.GDT_Float32, options)
+
+            # vérification de la validité du GPKG créé
+            if dst_ds is None:
+                QMessageBox.warning(self, "Erreur", f"Impossible de créer le fichier GeoPackage")
+                return None
+
+            # copie des métadonnées géospatiales
+            dst_ds.SetGeoTransform(geo_transform)
+            dst_ds.SetProjection(projection)
+            # copie des données
+            data = band.ReadAsArray(0, 0, xsize, ysize)
+            dst_band = dst_ds.GetRasterBand(1)
+
+            # définition de la valeur nodata puisqu'elle existe
+            nodata_value = band.GetNoDataValue()
+            if nodata_value is not None:
+                dst_band.SetNoDataValue(nodata_value)
+
+            # écriture des données
+            dst_band.WriteArray(data)
+            # traitement du cache
+            dst_ds.FlushCache()
+            dst_ds = None
+            src_ds = None
+
+            # vérification de la création des GPKG
+            if os.path.exists(gpkg_path):
+                QgsMessageLog.logMessage(f"GeoPackage créé avec succès: {gpkg_path}", "Top'Eau", Qgis.Success)
+                return gpkg_path
+            else:
+                QMessageBox.warning(self, "Erreur", f"Le GeoPackage n'a pas été créé")
+                return None
+
+        except Exception as e:
+            QgsMessageLog.logMessage(f"Erreur lors de la conversion en GeoPackage: {str(e)}", "Top'Eau", Qgis.Critical)
+            QMessageBox.warning(self, "Erreur GDAL", f"Erreur lors de la conversion en GeoPackage:\n{str(e)}")
+            return None
+
+
+
