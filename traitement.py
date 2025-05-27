@@ -370,7 +370,7 @@ class TraitementWidget(QDialog, form_traitement):
         # calcul automatique de la surface après création du raster
         if os.path.exists(path_resamp):
             # calcul de la surface totale
-            surface_totale, _, volume_total = self.calculer_stats_raster(path_resamp)
+            surface_totale, _, volume_total, classe_1_surf, classe_2_surf, classe_3_surf, classe_4_surf, classe_5_surf, classe_6_surf, classe_7_surf = self.calculer_stats_raster(path_resamp)
 
             if surface_totale is not None:
                 try:
@@ -379,7 +379,7 @@ class TraitementWidget(QDialog, form_traitement):
 
                     if gpkg_path:
                         # stockage des résultats dans la table GPKG avec la surface calculée
-                        self.creation_table_gpkg(gpkg_path, surface_totale, volume_total,
+                        self.creation_table_gpkg(gpkg_path, surface_totale, volume_total, classe_1_surf, classe_2_surf, classe_3_surf, classe_4_surf, classe_5_surf, classe_6_surf, classe_7_surf,
                                                  self.valeur_min,
                                                  self.valeur_moy,
                                                  self.valeur_max,
@@ -440,11 +440,33 @@ class TraitementWidget(QDialog, form_traitement):
             else:
                 mask = (~np.isnan(data)) & (data != 0)
 
+            # 3.6.7. calcul de la surface en fonction de classes prédéfinies
+            pixels_cl1 = np.count_nonzero((data > 0) & (data <= 0.05))
+            classe_1_surf = pixels_cl1 * surface_pixel
+
+            pixels_cl2 = np.count_nonzero((data > 0.05) & (data <= 0.10))
+            classe_2_surf = pixels_cl2 * surface_pixel
+
+            pixels_cl3 = np.count_nonzero((data > 0.10) & (data <= 0.15))
+            classe_3_surf = pixels_cl3 * surface_pixel
+
+            pixels_cl4 = np.count_nonzero((data > 0.15) & (data <= 0.20))
+            classe_4_surf = pixels_cl4 * surface_pixel
+
+            pixels_cl5 = np.count_nonzero((data > 0.20) & (data <= 0.25))
+            classe_5_surf = pixels_cl5 * surface_pixel
+
+            pixels_cl6 = np.count_nonzero((data > 0.20) & (data <= 0.25))
+            classe_6_surf = pixels_cl6 * surface_pixel
+
+            pixels_cl7 = np.count_nonzero((data > 0.20) & (data <= 0.25))
+            classe_7_surf = pixels_cl7 * surface_pixel
+
             pixels_valides = np.count_nonzero(mask)
             surface_totale = pixels_valides * surface_pixel
             volume_total = np.sum(data[mask]) * surface_pixel
 
-            return surface_totale, pixels_valides, volume_total
+            return surface_totale, pixels_valides, volume_total, classe_1_surf, classe_2_surf, classe_3_surf, classe_4_surf, classe_5_surf, classe_6_surf, classe_7_surf
 
 
         except Exception as e:
@@ -457,7 +479,10 @@ class TraitementWidget(QDialog, form_traitement):
     # étape interne à la génération des rasters
     # fonction permettant de créer une table dans le GPKG
     # la fonction est répétée automatiquement autant de fois qu'il y a de niveaux d'eau à traiter puisqu'elle est traitée par la boucle
-    def creation_table_gpkg(self, gpkg_path, surface_totale, volume_total, valeur_min, valeur_max, valeur_moy, valeur_med):
+    def creation_table_gpkg(self,
+                            gpkg_path, surface_totale, volume_total,
+                            classe_1_surf, classe_2_surf, classe_3_surf, classe_4_surf, classe_5_surf, classe_6_surf, classe_7_surf,
+                            valeur_min, valeur_max, valeur_moy, valeur_med):
 
         # création d'un chemin pour ces GPKG
         base_name = os.path.basename(gpkg_path).replace('.gpkg', '')
@@ -492,6 +517,13 @@ class TraitementWidget(QDialog, form_traitement):
                        volume_eau_m3 REAL,
                        min_parcelle REAL,
                        max_parcelle REAL,
+                       classe_1 REAL,
+                       classe_2 REAL,
+                       classe_3 REAL,
+                       classe_4 REAL,
+                       classe_5 REAL,
+                       classe_6 REAL,
+                       classe_7 REAL,
                        moyenne_parcelle REAL,
                        mediane_parcelle REAL
                    )
@@ -503,7 +535,14 @@ class TraitementWidget(QDialog, form_traitement):
                    (niveau_eau, 
                    zone_etude, 
                    surface_eau_m2, 
-                   volume_eau_m3, 
+                   volume_eau_m3,
+                   classe_1, 
+                   classe_2,
+                   classe_3,
+                   classe_4,
+                   classe_5,
+                   classe_6,
+                   classe_7,
                    min_parcelle,
                    max_parcelle,
                    moyenne_parcelle,
@@ -515,6 +554,13 @@ class TraitementWidget(QDialog, form_traitement):
                    ?,
                    ?,
                    ?,
+                   ?,
+                   ?,
+                   ?,
+                   ?,
+                   ?,
+                   ?,
+                   ?,
                    ?, 
                    ?)
                ''', (
@@ -522,6 +568,13 @@ class TraitementWidget(QDialog, form_traitement):
                 self.nomZE.text(),
                 round(surface_totale, 2),
                 round(volume_total, 2),
+                round(classe_1_surf, 2),
+                round(classe_2_surf, 2),
+                round(classe_3_surf, 2),
+                round(classe_4_surf, 2),
+                round(classe_5_surf, 2),
+                round(classe_6_surf, 2),
+                round(classe_7_surf, 2),
                 round(self.valeur_min, 2),
                 round(self.valeur_max, 2),
                 round(self.valeur_moy, 2),
