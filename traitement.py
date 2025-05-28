@@ -456,10 +456,10 @@ class TraitementWidget(QDialog, form_traitement):
             pixels_cl5 = np.count_nonzero((data > 0.20) & (data <= 0.25))
             classe_5_surf = pixels_cl5 * surface_pixel
 
-            pixels_cl6 = np.count_nonzero((data > 0.20) & (data <= 0.25))
+            pixels_cl6 = np.count_nonzero((data > 0.25) & (data <= 0.30))
             classe_6_surf = pixels_cl6 * surface_pixel
 
-            pixels_cl7 = np.count_nonzero((data > 0.20) & (data <= 0.25))
+            pixels_cl7 = np.count_nonzero(data > 0.30)
             classe_7_surf = pixels_cl7 * surface_pixel
 
             pixels_valides = np.count_nonzero(mask)
@@ -619,11 +619,6 @@ class TraitementWidget(QDialog, form_traitement):
             geo_transform = src_ds.GetGeoTransform()
             projection = src_ds.GetProjection()
 
-            # log des infos du raster pour le débogage si besoin
-            QgsMessageLog.logMessage(f"Type de données original: {gdal.GetDataTypeName(data_type)}", "Top'Eau",
-                                     Qgis.Info)
-            QgsMessageLog.logMessage(f"Dimensions: {xsize}x{ysize}", "Top'Eau", Qgis.Info)
-
             # conversion du raster via l'ajout d'un driver GDAL
             driver = gdal.GetDriverByName('GPKG')
             if driver is None:
@@ -673,6 +668,3 @@ class TraitementWidget(QDialog, form_traitement):
             QgsMessageLog.logMessage(f"Erreur lors de la conversion en GeoPackage: {str(e)}", "Top'Eau", Qgis.Critical)
             QMessageBox.warning(self, "Erreur GDAL", f"Erreur lors de la conversion en GeoPackage:\n{str(e)}")
             return None
-
-
-
