@@ -27,14 +27,14 @@ import sqlite3
 temp_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "temp")
 qml_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "style")
 
-# Lien entre traitement.py et traitement.ui
+# lien entre traitement.py et traitement.ui
 ui_path = os.path.dirname(os.path.abspath(__file__))
 ui_path = os.path.join(ui_path, "ui")
 form_traitement, _ = uic.loadUiType(os.path.join(ui_path, "traitement.ui"))
 
 
-# Mise en place de la classe TraitementWidget
-# Va regrouper l'ensemble des fonctions relatives aux traitements à réaliser
+# mise en place de la classe TraitementWidget
+# va regrouper l'ensemble des fonctions relatives aux traitements à réaliser
 class TraitementWidget(QDialog, form_traitement):
     def __init__(self, iface):
         QDialog.__init__(self)
@@ -191,19 +191,19 @@ class TraitementWidget(QDialog, form_traitement):
         # 3.5. création d'une liste Python pour stocker les couches générées
         couches_generees = []
 
-        # NOUVEAU : Créer le GPKG une seule fois avant la boucle
+        # 3.6. création du GPKG une seule fois avant la boucle
         nom_ze = self.nomZE.text()
         output_gpkg_path = self.outputGpkg.filePath()
         gpkg_path = os.path.join(output_gpkg_path, f"{nom_ze}_topeau.gpkg")
 
-        # Supprimer le GPKG s'il existe déjà pour éviter les conflits
+        # suppressin du GPKG s'il existe déjà pour éviter les conflits
         if os.path.exists(gpkg_path):
             os.remove(gpkg_path)
 
-        # NOUVEAU : Créer le GPKG vide et la table SQLite dès le début
+        # création du GPKG vide et de la table SQLite dès le début
         self.creer_gpkg_initial(gpkg_path)
 
-        # 3.6. mise en place de la boucle de génération des rasters
+        # 3.7. mise en place de la boucle de génération des rasters
         self.current_level = max_level  # on commence au niveau max et on descend
         count = 0
 
@@ -234,20 +234,22 @@ class TraitementWidget(QDialog, form_traitement):
                 # appel du raster ré-échantillonné à 25x25 cm avec r.resamp.stats de GRASS (fonction resample_raster)
                 resampled_raster = self.resample_raster(raster_diff, output_name)
 
-                # ajout du raster à la liste des rasters s'il a bien été ré-échantillonné
+                # ajout du raster à la liste des rasters s'il a bien été ré-échantillonné et boucle sur les fonctions nécessaires au formatage GPKG
                 if resampled_raster:
-                    # NOUVEAU : Convertir directement chaque raster dans le GPKG unique
+
+                    # conversion de chaque raster dans le GPKG unique
                     self.ajouter_raster_au_gpkg(resampled_raster, gpkg_path, output_name)
 
-                    # Calculer les stats pour la table
+                    # calcul des stats pour la table
                     surface_totale, _, volume_total, classe_1_surf, classe_2_surf, classe_3_surf, classe_4_surf, classe_5_surf, classe_6_surf, classe_7_surf = self.calculer_stats_raster(
                         resampled_raster)
 
-                    # Créer/alimenter la table SQLite
+                    # création et alimentation de la table SQLite
                     self.ajouter_donnees_table_gpkg(gpkg_path, surface_totale, volume_total,
                                                     classe_1_surf, classe_2_surf, classe_3_surf, classe_4_surf,
                                                     classe_5_surf, classe_6_surf, classe_7_surf,
                                                     self.valeur_min, self.valeur_max, self.valeur_moy, self.valeur_med)
+
 
                     couches_generees.append(f"{output_name} (dans {gpkg_path})")
 
@@ -266,15 +268,15 @@ class TraitementWidget(QDialog, form_traitement):
     # fonction permettant de découper le raster
     # la fonction est répétée automatiquement autant de fois qu'il y a de niveaux d'eau à traiter puisqu'elle est traitée par la boucle
     def decouper_raster(self):
-        # 3.6.1. chargement du raster sélectionné par l'utilisateur
+        # 3.7.1. chargement du raster sélectionné par l'utilisateur
         selected_raster = self.inputRaster.filePath()
-        # 3.6.2. chargement du vecteur sélectionné par l'utilisateur
+        # 3.7.2. chargement du vecteur sélectionné par l'utilisateur
         selected_vecteur = self.inputVecteur.filePath()
 
         # création d'un fichier temporaire
         path_clip = os.path.join(temp_path, "temp_layer_clip.tif")
 
-        # 3.6.3. utilisation de l'algorithme GDAL "Découper un raster selon une couche de masque"
+        # 3.7.3. utilisation de l'algorithme GDAL "Découper un raster selon une couche de masque"
         processing.run("gdal:cliprasterbymasklayer", {
             'INPUT': selected_raster, #variable récupérant le raster sélectionné par l'utilisateur
             'MASK': selected_vecteur, #variable récupérant le vecteur sélectionné par l'utilisateur
@@ -301,10 +303,10 @@ class TraitementWidget(QDialog, form_traitement):
     # la fonction est répétée automatiquement autant de fois qu'il y a de niveaux d'eau à traiter puisqu'elle est traitée par la boucle
     def calcul_niveau_eau(self, output_path):
 
-        # 3.6.1. utilisation de self.current_level pour le niveau d'eau
+        # 3.7.1. utilisation de self.current_level pour le niveau d'eau
         niveau_eau = self.current_level
 
-        # 3.6.2. chargement du raster découpé précédemment
+        # 3.7.2. chargement du raster découpé précédemment
         path_clip = os.path.join(temp_path, "temp_layer_clip.tif")
         layer_clip = QgsRasterLayer(path_clip, f"parcelle_decoupee", "gdal")
 
@@ -319,7 +321,7 @@ class TraitementWidget(QDialog, form_traitement):
         # création d'une expression raster unique avec le niveau d'eau à étudier
         expression = f"{niveau_eau} - \"parcelle_decoupee@1\""
 
-        # 3.6.3. utilisation de la "Calculatrice raster"
+        # 3.7.3. utilisation de la "Calculatrice raster"
         processing.run("native:rastercalc", {
             'LAYERS': [layer_clip],
             'EXPRESSION': expression,
@@ -332,7 +334,7 @@ class TraitementWidget(QDialog, form_traitement):
         # création d'un fichier temporaire pour la reclassification
         path_reclass = os.path.join(temp_path, f"reclass_{int(niveau_eau * 100)}.tif")
 
-        # 3.6.4. utilisation de l'outil natif "Reclassification" pour supprimer les valeurs négatives
+        # 3.7.4. utilisation de l'outil natif "Reclassification" pour supprimer les valeurs négatives
         processing.run("native:reclassifybytable", {
             'INPUT_RASTER': path_diff,
             'RASTER_BAND': 1,
@@ -361,7 +363,7 @@ class TraitementWidget(QDialog, form_traitement):
             QMessageBox.warning(self, "Erreur", f"La couche à rééchantillonner n'est pas valide: {input_path}")
             return None
 
-        # 3.6.1. utilisation de l'algorithme GRASS "r.resamp.Stats" pour le ré-échantillonnage
+        # 3.7.1. utilisation de l'algorithme GRASS "r.resamp.Stats" pour le ré-échantillonnage
         processing.run("grass:r.resamp.stats", {
             'input': layer_reclass,
             'method': 1,  #mediane
@@ -375,7 +377,7 @@ class TraitementWidget(QDialog, form_traitement):
             'GRASS_RASTER_FORMAT_META': ''
         })
 
-        # 3.6.2. calcul automatique de la surface après création du raster
+        # 3.7.2. calcul automatique de la surface après création du raster
         if os.path.exists(path_resamp):
             surface_totale, _, volume_total, classe_1_surf, classe_2_surf, classe_3_surf, classe_4_surf, classe_5_surf, classe_6_surf, classe_7_surf = self.calculer_stats_raster(path_resamp)
 
@@ -397,35 +399,35 @@ class TraitementWidget(QDialog, form_traitement):
             if dataset is None:
                 raise Exception(f"Impossible d'ouvrir le raster {path_resamp}")
 
-            # 3.6.1. récupération des informations du raster
+            # 3.7.1. récupération des informations du raster
             band = dataset.GetRasterBand(1)
             geo_transform = dataset.GetGeoTransform()
 
-            # 3.6.2 récupération de la résolution des pixels (en mètres si CRS en mètres)
+            # 3.7.2 récupération de la résolution des pixels (en mètres si CRS en mètres)
             pixel_width = abs(geo_transform[1])  # largeur d'un pixel
             pixel_height = abs(geo_transform[5])  # hauteur d'un pixel
             surface_pixel = pixel_width * pixel_height  # surface d'un pixel en m²
 
-            # 3.6.3. lecture des données du raster
+            # 3.7.3. lecture des données du raster
             data = band.ReadAsArray()
             nodata_value = band.GetNoDataValue()
 
-            # 3.6.4. comptage des pixels non-nuls
+            # 3.7.4. comptage des pixels non-nuls
             if nodata_value is not None:
                 pixels_valides = np.count_nonzero(~np.isnan(data) & (data != nodata_value))
             else:
                 pixels_valides = np.count_nonzero(~np.isnan(data) & (data != 0))
 
-            # 3.6.5. calcul de la surface totale
+            # 3.7.5. calcul de la surface totale
             surface_totale = pixels_valides * surface_pixel
 
-            # 3.6.6. calcul du volume : somme des hauteurs d'eau valides × surface d'un pixel
+            # 3.7.6. calcul du volume : somme des hauteurs d'eau valides × surface d'un pixel
             if nodata_value is not None:
                 mask = (~np.isnan(data)) & (data != nodata_value)
             else:
                 mask = (~np.isnan(data)) & (data != 0)
 
-            # 3.6.7. calcul de la surface en fonction de classes prédéfinies
+            # 3.7.7. calcul de la surface en fonction de classes prédéfinies
             pixels_cl1 = np.count_nonzero((data > 0) & (data <= 0.05))
             classe_1_surf = pixels_cl1 * surface_pixel
 
@@ -507,16 +509,18 @@ class TraitementWidget(QDialog, form_traitement):
             raise e
 
 
-    # 5. fonction permettant de formater les TIFF pour qu'ils passent en GeoPackage
+    # étape interne à la génération des rasters
+    # fonction permettant de formater les TIFF pour qu'ils passent en GeoPackage
+    # la fonction est répétée automatiquement autant de fois qu'il y a de niveaux d'eau à traiter puisqu'elle est traitée par la boucle
     def ajouter_raster_au_gpkg(self, path_resamp, gpkg_path, table_name):
 
         try:
-            # 5.1. vérification de l'existence du GPKG
+            # vérification de l'existence du GPKG
             if not os.path.exists(gpkg_path):
                 QgsMessageLog.logMessage(f"GPKG inexistant: {gpkg_path}", "Top'Eau", Qgis.Warning)
                 return False
 
-            # 5.2. utilisation de l'API GDAL pour la conversion
+            # 3.7.1. utilisation de l'API GDAL pour la conversion
             try:
                 # ouverture du raster source avec GDAL
                 src_ds = gdal.Open(path_resamp)
@@ -593,23 +597,25 @@ class TraitementWidget(QDialog, form_traitement):
             return False
 
 
-    # 6. fonction permettant d'insérer les données dans la table attributaire du GPKG
+    # étape interne à la génération des rasters
+    # fonction permettant d'insérer les données dans la table attributaire du GPKG
+    # la fonction est répétée automatiquement autant de fois qu'il y a de niveaux d'eau à traiter puisqu'elle est traitée par la boucle
     def ajouter_donnees_table_gpkg(self,
                             gpkg_path, surface_totale, volume_total,
                             classe_1_surf, classe_2_surf, classe_3_surf, classe_4_surf, classe_5_surf, classe_6_surf, classe_7_surf,
                             valeur_min, valeur_max, valeur_moy, valeur_med):
 
         try:
-            # 6.1. vérification de l'existence dyu GPKG
+            # vérification de l'existence dyu GPKG
             if not os.path.exists(gpkg_path):
                 QgsMessageLog.logMessage(f"GPKG inexistant pour ajout données: {gpkg_path}", "Top'Eau", Qgis.Warning)
                 return False
 
-            # 6.2. connexion SQLite directe au GeoPackage
+            # 3.7.1. connexion SQLite directe au GeoPackage
             conn = sqlite3.connect(gpkg_path)
             cursor = conn.cursor()
 
-            # 6.3. insertion du contenu dans la table
+            # 3.7.2. insertion du contenu dans la table
             cursor.execute('''
                    INSERT INTO hauteur_eau 
                    (niveau_eau, 
@@ -671,3 +677,5 @@ class TraitementWidget(QDialog, form_traitement):
         finally:
             if 'conn' in locals():
                 conn.close()
+
+
