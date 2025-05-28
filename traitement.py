@@ -261,21 +261,6 @@ class TraitementWidget(QDialog, form_traitement):
         QMessageBox.information(self, "Traitement terminé",
                                 f"{len(couches_generees)} rasters ont été générés avec succès.")
 
-        # 3.7. chargement des rasters dans le projet QGIS
-        for path_resamp in couches_generees:
-            layer_name = os.path.basename(path_resamp).replace('.tif', '')
-            layer = QgsRasterLayer(path_resamp, layer_name)
-            if layer.isValid():
-                QgsProject.instance().addMapLayer(layer)
-                # chargement du style style_classif.qml
-                style_path_resamp = os.path.join(qml_path, "style_classif.qml")
-                if os.path.exists(style_path_resamp):
-                    layer.loadNamedStyle(style_path_resamp)
-                    layer.triggerRepaint()
-            else:
-                QMessageBox.warning(self, "Erreur",
-                                    f"La/les couche/s {layer_name} n'est pas valide/ne sont pas valides.")
-
 
     # étape interne à la génération des rasters
     # fonction permettant de découper le raster
@@ -390,9 +375,8 @@ class TraitementWidget(QDialog, form_traitement):
             'GRASS_RASTER_FORMAT_META': ''
         })
 
-        # calcul automatique de la surface après création du raster
+        # 3.6.2. calcul automatique de la surface après création du raster
         if os.path.exists(path_resamp):
-            # calcul de la surface totale
             surface_totale, _, volume_total, classe_1_surf, classe_2_surf, classe_3_surf, classe_4_surf, classe_5_surf, classe_6_surf, classe_7_surf = self.calculer_stats_raster(path_resamp)
 
         else:
@@ -476,21 +460,22 @@ class TraitementWidget(QDialog, form_traitement):
             dataset = None
 
 
-    # 2. NOUVELLE FONCTION : Créer le GPKG initial vide
+    # 4. création du GPKG et de sa table attributaire "hauteur_eau"
     def creer_gpkg_initial(self, gpkg_path):
-        """Crée un GPKG vide avec la table hauteur_eau"""
+
         try:
-            # Créer un GPKG minimal avec GDAL
+            # 4.1. création d'un GPKG avec GDAL
             driver = gdal.GetDriverByName('GPKG')
             ds = driver.Create(gpkg_path, 1, 1, 1, gdal.GDT_Byte)
             if ds is None:
                 raise Exception(f"Impossible de créer le GPKG {gpkg_path}")
             ds = None  # Fermer le dataset
 
-            # Créer la table hauteur_eau
+            # 4.2. connexion au GPKG
             conn = sqlite3.connect(gpkg_path)
             cursor = conn.cursor()
 
+            # 4.3. création d'une table attributaire "hauteur_eau" à l'intérieur du GPKG
             cursor.execute('''
                 CREATE TABLE hauteur_eau (
                     id INTEGER PRIMARY KEY AUTOINCREMENT, 
@@ -515,26 +500,23 @@ class TraitementWidget(QDialog, form_traitement):
             conn.commit()
             conn.close()
 
-            QgsMessageLog.logMessage(f"GPKG initial créé : {gpkg_path}", "Top'Eau", Qgis.Info)
+            QgsMessageLog.logMessage(f"GPKG créé : {gpkg_path}", "Top'Eau", Qgis.Info)
 
         except Exception as e:
-            QgsMessageLog.logMessage(f"Erreur création GPKG initial: {str(e)}", "Top'Eau", Qgis.Critical)
+            QgsMessageLog.logMessage(f"Erreur création GPKG : {str(e)}", "Top'Eau", Qgis.Critical)
             raise e
 
-    # étape interne à la génération des rasters
-    # fonction permettant de formater les TIFF pour qu'ils passent en GeoPackage
-    # la fonction est répétée automatiquement autant de fois qu'il y a de niveaux d'eau à traiter puisqu'elle est traitée par la boucle
+
+    # 5. fonction permettant de formater les TIFF pour qu'ils passent en GeoPackage
     def ajouter_raster_au_gpkg(self, path_resamp, gpkg_path, table_name):
-        """Ajoute un raster au GeoPackage existant comme nouvelle table raster"""
+
         try:
-            # Vérifier que le GPKG existe
+            # 5.1. vérification de l'existence du GPKG
             if not os.path.exists(gpkg_path):
                 QgsMessageLog.logMessage(f"GPKG inexistant: {gpkg_path}", "Top'Eau", Qgis.Warning)
                 return False
 
-
-
-            # 3.6.2. utilisation de l'API GDAL pour la conversion
+            # 5.2. utilisation de l'API GDAL pour la conversion
             try:
                 # ouverture du raster source avec GDAL
                 src_ds = gdal.Open(path_resamp)
@@ -549,11 +531,6 @@ class TraitementWidget(QDialog, form_traitement):
                 ysize = src_ds.RasterYSize
                 geo_transform = src_ds.GetGeoTransform()
                 projection = src_ds.GetProjection()
-
-                # log des infos du raster pour le débogage si besoin
-                QgsMessageLog.logMessage(f"Type de données original: {gdal.GetDataTypeName(data_type)}", "Top'Eau",
-                                         Qgis.Info)
-                QgsMessageLog.logMessage(f"Dimensions: {xsize}x{ysize}", "Top'Eau", Qgis.Info)
 
                 # conversion du raster via l'ajout d'un driver GDAL
                 driver = gdal.GetDriverByName('GPKG')
@@ -616,25 +593,23 @@ class TraitementWidget(QDialog, form_traitement):
             return False
 
 
-    # étape interne à la génération des rasters
-    # fonction permettant de créer une table dans le GPKG
-    # la fonction est répétée automatiquement autant de fois qu'il y a de niveaux d'eau à traiter puisqu'elle est traitée par la boucle
+    # 6. fonction permettant d'insérer les données dans la table attributaire du GPKG
     def ajouter_donnees_table_gpkg(self,
                             gpkg_path, surface_totale, volume_total,
                             classe_1_surf, classe_2_surf, classe_3_surf, classe_4_surf, classe_5_surf, classe_6_surf, classe_7_surf,
                             valeur_min, valeur_max, valeur_moy, valeur_med):
 
         try:
-            # Vérifier que le GPKG existe
+            # 6.1. vérification de l'existence dyu GPKG
             if not os.path.exists(gpkg_path):
                 QgsMessageLog.logMessage(f"GPKG inexistant pour ajout données: {gpkg_path}", "Top'Eau", Qgis.Warning)
                 return False
 
-            # connexion SQLite directe au GeoPackage
+            # 6.2. connexion SQLite directe au GeoPackage
             conn = sqlite3.connect(gpkg_path)
             cursor = conn.cursor()
 
-            # insertion du contenu dans la table
+            # 6.3. insertion du contenu dans la table
             cursor.execute('''
                    INSERT INTO hauteur_eau 
                    (niveau_eau, 
