@@ -201,7 +201,7 @@ class TraitementWidget(QDialog, form_traitement):
             os.remove(gpkg_path)
 
         # création du GPKG vide et de la table SQLite dès le début
-        self.creer_gpkg_initial(gpkg_path)
+        self.creer_gpkg_initial(gpkg_path, self.valeur_min, self.valeur_max, self.valeur_moy, self.valeur_med)
 
         # 3.7. mise en place de la boucle de génération des rasters
         self.current_level = max_level  # on commence au niveau max et on descend
@@ -244,12 +244,10 @@ class TraitementWidget(QDialog, form_traitement):
                     surface_totale, _, volume_total, classe_1_surf, classe_2_surf, classe_3_surf, classe_4_surf, classe_5_surf, classe_6_surf, classe_7_surf = self.calculer_stats_raster(
                         resampled_raster)
 
-                    # création et alimentation de la table SQLite
+                    # alimentation de la table SQLite
                     self.ajouter_donnees_table_gpkg(gpkg_path, surface_totale, volume_total,
                                                     classe_1_surf, classe_2_surf, classe_3_surf, classe_4_surf,
-                                                    classe_5_surf, classe_6_surf, classe_7_surf,
-                                                    self.valeur_min, self.valeur_max, self.valeur_moy, self.valeur_med)
-
+                                                    classe_5_surf, classe_6_surf, classe_7_surf)
 
                     couches_generees.append(f"{output_name} (dans {gpkg_path})")
 
@@ -465,7 +463,7 @@ class TraitementWidget(QDialog, form_traitement):
 
 
     # 4. création du GPKG et de sa table attributaire "hauteur_eau"
-    def creer_gpkg_initial(self, gpkg_path):
+    def creer_gpkg_initial(self, gpkg_path, valeur_min, valeur_max, valeur_moy, valeur_med):
 
         try:
             # 4.1. création d'un GPKG avec GDAL
@@ -479,21 +477,12 @@ class TraitementWidget(QDialog, form_traitement):
             conn = sqlite3.connect(gpkg_path)
             cursor = conn.cursor()
 
-            # 4.3. création d'une table attributaire "hauteur_eau" à l'intérieur du GPKG
+            # 4.3. création des tables attributaires à l'intérieur du GPKG
+
             cursor.execute('''
-                CREATE TABLE hauteur_eau (
+                CREATE TABLE zone_etude (
                     id INTEGER PRIMARY KEY AUTOINCREMENT, 
-                    niveau_eau REAL,
-                    zone_etude TEXT,
-                    surface_eau_m2 REAL,
-                    volume_eau_m3 REAL,
-                    classe_1 REAL,
-                    classe_2 REAL,
-                    classe_3 REAL,
-                    classe_4 REAL,
-                    classe_5 REAL,
-                    classe_6 REAL,
-                    classe_7 REAL,
+                    nom TEXT,
                     min_parcelle REAL,
                     max_parcelle REAL,
                     moyenne_parcelle REAL,
@@ -502,7 +491,45 @@ class TraitementWidget(QDialog, form_traitement):
             ''')
 
             cursor.execute('''
-                CREATE TABLE bouee_piezo (
+                            INSERT INTO zone_etude
+                                (nom,
+                                min_parcelle,
+                                max_parcelle,
+                                moyenne_parcelle,
+                                mediane_parcelle) 
+                                VALUES 
+                                (?, 
+                                ?, 
+                                ?, 
+                                ?,
+                                ?)
+                            ''', (
+                self.nomZE.text(),
+                round(self.valeur_min, 2),
+                round(self.valeur_max, 2),
+                round(self.valeur_moy, 2),
+                round(self.valeur_med, 2)
+            ))
+
+            cursor.execute('''
+                CREATE TABLE hauteur_eau (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT, 
+                    niveau_eau REAL,
+                    nom TEXT,
+                    surface_eau_m2 REAL,
+                    volume_eau_m3 REAL,
+                    classe_1 REAL,
+                    classe_2 REAL,
+                    classe_3 REAL,
+                    classe_4 REAL,
+                    classe_5 REAL,
+                    classe_6 REAL,
+                    classe_7 REAL
+                )
+            ''')
+
+            cursor.execute('''
+                CREATE TABLE mesure (
                     id INTEGER PRIMARY KEY, 
                     date DATE,
                     niveau_eau REAL
@@ -576,12 +603,6 @@ class TraitementWidget(QDialog, form_traitement):
                 data = band.ReadAsArray(0, 0, xsize, ysize)
                 dst_band = dst_ds.GetRasterBand(1)
 
-                path_style = os.path.join(qml_path, "symbo.qml")
-
-                processing.run("native:setlayerstyle", {
-                    'INPUT': gpkg_path,
-                    'STYLE': path_style})
-
                 # définition de la valeur nodata puisqu'elle existe et qu'on veut s'en servir pour les calculs de stat
                 nodata_value = band.GetNoDataValue()
                 if nodata_value is not None:
@@ -618,11 +639,10 @@ class TraitementWidget(QDialog, form_traitement):
     # la fonction est répétée automatiquement autant de fois qu'il y a de niveaux d'eau à traiter puisqu'elle est traitée par la boucle
     def ajouter_donnees_table_gpkg(self,
                             gpkg_path, surface_totale, volume_total,
-                            classe_1_surf, classe_2_surf, classe_3_surf, classe_4_surf, classe_5_surf, classe_6_surf, classe_7_surf,
-                            valeur_min, valeur_max, valeur_moy, valeur_med):
+                            classe_1_surf, classe_2_surf, classe_3_surf, classe_4_surf, classe_5_surf, classe_6_surf, classe_7_surf):
 
         try:
-            # vérification de l'existence dyu GPKG
+            # vérification de l'existence du GPKG
             if not os.path.exists(gpkg_path):
                 QgsMessageLog.logMessage(f"GPKG inexistant pour ajout données: {gpkg_path}", "Top'Eau", Qgis.Warning)
                 return False
@@ -631,11 +651,11 @@ class TraitementWidget(QDialog, form_traitement):
             conn = sqlite3.connect(gpkg_path)
             cursor = conn.cursor()
 
-            # 3.7.2. insertion du contenu dans la table
+            # 3.7.2. insertion du contenu dans les tables
             cursor.execute('''
                    INSERT INTO hauteur_eau 
                    (niveau_eau, 
-                   zone_etude, 
+                   nom, 
                    surface_eau_m2, 
                    volume_eau_m3,
                    classe_1, 
@@ -644,11 +664,7 @@ class TraitementWidget(QDialog, form_traitement):
                    classe_4,
                    classe_5,
                    classe_6,
-                   classe_7,
-                   min_parcelle,
-                   max_parcelle,
-                   moyenne_parcelle,
-                   mediane_parcelle) 
+                   classe_7) 
                    VALUES 
                    (?, 
                    ?, 
@@ -660,10 +676,6 @@ class TraitementWidget(QDialog, form_traitement):
                    ?,
                    ?,
                    ?,
-                   ?,
-                   ?,
-                   ?,
-                   ?, 
                    ?)
                ''', (
                 round(self.current_level, 2),
@@ -676,11 +688,7 @@ class TraitementWidget(QDialog, form_traitement):
                 round(classe_4_surf, 2),
                 round(classe_5_surf, 2),
                 round(classe_6_surf, 2),
-                round(classe_7_surf, 2),
-                round(self.valeur_min, 2),
-                round(self.valeur_max, 2),
-                round(self.valeur_moy, 2),
-                round(self.valeur_med, 2)
+                round(classe_7_surf, 2)
             ))
 
             conn.commit()
