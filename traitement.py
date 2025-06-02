@@ -41,7 +41,7 @@ class TraitementWidget(QDialog, form_traitement):
         # création de l'interface de la fenêtre QGIS
         self.setupUi(self)
         # ajustement de la taille de la fenêtre pour qu'elle soit fixe
-        self.setFixedSize(600, 700)
+        #self.setFixedSize(600, 400)
         # nom donné à la fenêtre
         self.setWindowTitle("Top'Eau - Analyse raster : différence entre le niveau d'eau et la parcelle")
 
@@ -385,6 +385,8 @@ class TraitementWidget(QDialog, form_traitement):
             QgsMessageLog.logMessage(f"Le fichier raster {path_resamp} n'existe pas", "Top'Eau", Qgis.Warning)
             return None
 
+
+
         return path_resamp
 
 
@@ -471,7 +473,7 @@ class TraitementWidget(QDialog, form_traitement):
             ds = driver.Create(gpkg_path, 1, 1, 1, gdal.GDT_Byte)
             if ds is None:
                 raise Exception(f"Impossible de créer le GPKG {gpkg_path}")
-            ds = None  # Fermer le dataset
+            ds = None
 
             # 4.2. connexion au GPKG
             conn = sqlite3.connect(gpkg_path)
@@ -485,8 +487,6 @@ class TraitementWidget(QDialog, form_traitement):
                     zone_etude TEXT,
                     surface_eau_m2 REAL,
                     volume_eau_m3 REAL,
-                    min_parcelle REAL,
-                    max_parcelle REAL,
                     classe_1 REAL,
                     classe_2 REAL,
                     classe_3 REAL,
@@ -494,8 +494,18 @@ class TraitementWidget(QDialog, form_traitement):
                     classe_5 REAL,
                     classe_6 REAL,
                     classe_7 REAL,
+                    min_parcelle REAL,
+                    max_parcelle REAL,
                     moyenne_parcelle REAL,
                     mediane_parcelle REAL
+                )
+            ''')
+
+            cursor.execute('''
+                CREATE TABLE bouee_piezo (
+                    id INTEGER PRIMARY KEY, 
+                    date DATE,
+                    niveau_eau REAL
                 )
             ''')
 
@@ -517,7 +527,7 @@ class TraitementWidget(QDialog, form_traitement):
         try:
             # vérification de l'existence du GPKG
             if not os.path.exists(gpkg_path):
-                QgsMessageLog.logMessage(f"GPKG inexistant: {gpkg_path}", "Top'Eau", Qgis.Warning)
+                QgsMessageLog.logMessage(f"GPKG inexistant: {gpkg_path}", Qgis.Warning)
                 return False
 
             # 3.7.1. utilisation de l'API GDAL pour la conversion
@@ -566,7 +576,13 @@ class TraitementWidget(QDialog, form_traitement):
                 data = band.ReadAsArray(0, 0, xsize, ysize)
                 dst_band = dst_ds.GetRasterBand(1)
 
-                # définition de la valeur nodata puisqu'elle existe
+                path_style = os.path.join(qml_path, "symbo.qml")
+
+                processing.run("native:setlayerstyle", {
+                    'INPUT': gpkg_path,
+                    'STYLE': path_style})
+
+                # définition de la valeur nodata puisqu'elle existe et qu'on veut s'en servir pour les calculs de stat
                 nodata_value = band.GetNoDataValue()
                 if nodata_value is not None:
                     dst_band.SetNoDataValue(nodata_value)
@@ -593,7 +609,7 @@ class TraitementWidget(QDialog, form_traitement):
                 return None
 
         except Exception as e:
-            QgsMessageLog.logMessage(f"Erreur ajout raster au GPKG: {str(e)}", "Top'Eau", Qgis.Critical)
+            QgsMessageLog.logMessage(f"Erreur ajout raster au GPKG : {str(e)}", "Top'Eau", Qgis.Critical)
             return False
 
 
@@ -650,7 +666,7 @@ class TraitementWidget(QDialog, form_traitement):
                    ?, 
                    ?)
                ''', (
-                self.current_level,
+                round(self.current_level, 2),
                 self.nomZE.text(),
                 round(surface_totale, 2),
                 round(volume_total, 2),
@@ -677,5 +693,4 @@ class TraitementWidget(QDialog, form_traitement):
         finally:
             if 'conn' in locals():
                 conn.close()
-
 
