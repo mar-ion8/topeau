@@ -6,6 +6,7 @@ from PyQt5.QtWidgets import *
 from PyQt5 import uic
 from PyQt5.QtGui import *
 from qgis.core import *
+from qgis.core import Qgis, QgsMessageLog
 from qgis import processing
 import os
 # import des librairies nécessaires à la lecture de données géospatiales
@@ -38,6 +39,7 @@ form_traitement, _ = uic.loadUiType(os.path.join(ui_path, "traitement.ui"))
 class TraitementWidget(QDialog, form_traitement):
     def __init__(self, iface):
         QDialog.__init__(self)
+
         # création de l'interface de la fenêtre QGIS
         self.setupUi(self)
         # ajustement de la taille de la fenêtre pour qu'elle soit fixe
@@ -70,6 +72,22 @@ class TraitementWidget(QDialog, form_traitement):
         # initialisation du niveau d'eau à étudier pour l'utiliser dans les différentes fonctions
         self.current_level = None
 
+        # association de filtres à la sélection de couches dans le projet QGIS
+        self.inputRaster_2.setFilters(
+            QgsMapLayerProxyModel.RasterLayer |
+            QgsMapLayerProxyModel.PluginLayer |
+            QgsMapLayerProxyModel.NoGeometry
+        )
+        self.inputVecteur_2.setFilters(
+            QgsMapLayerProxyModel.HasGeometry |
+            QgsMapLayerProxyModel.VectorLayer |
+            QgsMapLayerProxyModel.PointLayer |
+            QgsMapLayerProxyModel.LineLayer |
+            QgsMapLayerProxyModel.PolygonLayer |
+            QgsMapLayerProxyModel.NoGeometry |
+            QgsMapLayerProxyModel.PluginLayer
+        )
+
     # instauration d'une fonction assurant l'exclusivité des boutons oui & non
     def on_checkbox_toggled(self):
         # si l'un est coché, décocher l'autre
@@ -93,11 +111,29 @@ class TraitementWidget(QDialog, form_traitement):
 
         # 1. découpage du raster en fonction de la ZE
 
-        # 1.1. chargement du raster sélectionné par l'utilisateur dans une variable qui sera récupérée par l'algo de découpage
+        # 1.1. chargement du raster sélectionné par l'utilisateur dans une variable
         selected_raster = self.inputRaster.filePath()
+        # vérification de la sélection d'un fichier en fonction du choix de l'utilisateur...
+        #...localement...
+        if not selected_raster or selected_raster.strip() == "":
+            # ...ou récupération de la couche sélectionnée depuis le projet
+            layer = self.inputRaster_2.currentLayer()
+            if layer is None or not isinstance(layer, QgsRasterLayer):
+                QMessageBox.warning(self, "Erreur", "Veuillez sélectionner un fichier raster.")
+                return
+            selected_raster = layer
 
-        # 1.2. chargement du vecteur sélectionné par l'utilisateur dans une variable qui sera récupérée par l'algo de découpage
+        # 1.2. chargement du vecteur sélectionné par l'utilisateur dans une variable
         selected_vecteur = self.inputVecteur.filePath()
+        # vérification de la sélection d'un fichier en fonction du choix de l'utilisateur...
+        # ...localement...
+        if not selected_vecteur or selected_vecteur.strip() == "":
+            # ...ou récupération de la couche sélectionnée depuis le projet
+            layer = self.inputVecteur_2.currentLayer()
+            if layer is None or not layer.isValid():
+                QMessageBox.warning(self, "Erreur", "Veuillez sélectionner un fichier vecteur.")
+                return
+            selected_vecteur = layer
 
         # création d'un fichier temporaire
         path_clip = os.path.join(temp_path, "temp_layer_clip.tif")
@@ -156,6 +192,10 @@ class TraitementWidget(QDialog, form_traitement):
         self.minLabel.setText(f"{self.valeur_min:.2f}m")
         self.maxLabel.setText(f"{self.valeur_max:.2f}m")
         self.moyLabel.setText(f"{self.valeur_moy:.2f}m")
+
+        # Stocker les chemins sélectionnés comme attributs de classe pour les utiliser dans d'autres fonctions
+        self.selected_raster_path = selected_raster
+        self.selected_vecteur_path = selected_vecteur
 
 
     # deuxième étape de l'analyse
@@ -266,10 +306,11 @@ class TraitementWidget(QDialog, form_traitement):
     # fonction permettant de découper le raster
     # la fonction est répétée automatiquement autant de fois qu'il y a de niveaux d'eau à traiter puisqu'elle est traitée par la boucle
     def decouper_raster(self):
+        # utilisation des chemins stockés plutôt que de refaire la sélection
         # 3.7.1. chargement du raster sélectionné par l'utilisateur
-        selected_raster = self.inputRaster.filePath()
+        selected_raster = getattr(self, 'selected_raster_path', None)
         # 3.7.2. chargement du vecteur sélectionné par l'utilisateur
-        selected_vecteur = self.inputVecteur.filePath()
+        selected_vecteur = getattr(self, 'selected_vecteur_path', None)
 
         # création d'un fichier temporaire
         path_clip = os.path.join(temp_path, "temp_layer_clip.tif")
@@ -383,8 +424,6 @@ class TraitementWidget(QDialog, form_traitement):
             QgsMessageLog.logMessage(f"Le fichier raster {path_resamp} n'existe pas", "Top'Eau", Qgis.Warning)
             return None
 
-
-
         return path_resamp
 
 
@@ -478,7 +517,6 @@ class TraitementWidget(QDialog, form_traitement):
             cursor = conn.cursor()
 
             # 4.3. création des tables attributaires à l'intérieur du GPKG
-
             cursor.execute('''
                 CREATE TABLE zone_etude (
                     id INTEGER PRIMARY KEY AUTOINCREMENT, 
@@ -651,7 +689,7 @@ class TraitementWidget(QDialog, form_traitement):
             conn = sqlite3.connect(gpkg_path)
             cursor = conn.cursor()
 
-            # 3.7.2. insertion du contenu dans les tables
+            # 3.7.2. insertion du contenu dans la table
             cursor.execute('''
                    INSERT INTO hauteur_eau 
                    (niveau_eau, 
