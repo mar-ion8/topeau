@@ -88,6 +88,10 @@ class TraitementWidget(QDialog, form_traitement):
             QgsMapLayerProxyModel.PluginLayer
         )
 
+        # association de l'import de fichiers aux fonctions de désactivation des listes déroulantes
+        self.inputRaster.fileChanged.connect(self.maj_etat_inputRaster2)
+        self.inputVecteur.fileChanged.connect(self.maj_etat_inputVecteur2)
+
     # instauration d'une fonction assurant l'exclusivité des boutons oui & non
     def on_checkbox_toggled(self):
         # si l'un est coché, décocher l'autre
@@ -100,9 +104,20 @@ class TraitementWidget(QDialog, form_traitement):
             # activer le QDoubleSpinBox min (inputMin) quand non est sélectionné
             self.inputMin.setEnabled(True)
 
-    def reject(self):
-        QDialog.reject(self)
-        return
+    # fonctions permettant de désactiver les listes déroulantes des couches si un chemin est renseigné pour l'import de données
+    def maj_etat_inputRaster2(self, path):
+        path = path.strip()
+        if path != "":
+            self.inputRaster_2.setEnabled(False)
+        else:
+            self.inputRaster_2.setEnabled(True)
+
+    def maj_etat_inputVecteur2(self, path):
+        path = path.strip()
+        if path != "":
+            self.inputVecteur_2.setEnabled(False)
+        else:
+            self.inputVecteur_2.setEnabled(True)
 
 
     # première étape de l'analyse
