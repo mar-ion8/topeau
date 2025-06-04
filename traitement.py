@@ -10,7 +10,6 @@ from qgis.core import Qgis, QgsMessageLog
 from qgis import processing
 import os
 # import des librairies nécessaires à la lecture de données géospatiales
-#import geopandas as gpd
 import json
 # import librairie nécessaire à certains calculs
 import math
@@ -457,7 +456,7 @@ class TraitementWidget(QDialog, form_traitement):
             band = dataset.GetRasterBand(1)
             geo_transform = dataset.GetGeoTransform()
 
-            # 3.7.2 récupération de la résolution des pixels (en mètres si CRS en mètres)
+            # 3.7.2 récupération de la résolution des pixels
             pixel_width = abs(geo_transform[1])  # largeur d'un pixel
             pixel_height = abs(geo_transform[5])  # hauteur d'un pixel
             surface_pixel = pixel_width * pixel_height  # surface d'un pixel en m²
@@ -519,7 +518,15 @@ class TraitementWidget(QDialog, form_traitement):
     # 4. création du GPKG et de sa table attributaire "hauteur_eau"
     def creer_gpkg_initial(self, gpkg_path, valeur_min, valeur_max, valeur_moy, valeur_med):
 
+        # import des librairies propres à cette fonction pour la récupération de la date de création
+        import os
+        from datetime import datetime
+
         try:
+
+            # instauration d'une variable permettant de récupérer la date de création du fichier
+            date_creation = datetime.now().strftime('%Y-%m-%d')
+
             # 4.1. création d'un GPKG avec GDAL
             driver = gdal.GetDriverByName('GPKG')
             ds = driver.Create(gpkg_path, 1, 1, 1, gdal.GDT_Byte)
@@ -527,11 +534,29 @@ class TraitementWidget(QDialog, form_traitement):
                 raise Exception(f"Impossible de créer le GPKG {gpkg_path}")
             ds = None
 
-            # 4.2. connexion au GPKG
+            # 4.2. récupération de la date de création du fichier après sa création
+            try:
+                if os.path.exists(gpkg_path):
+                    # utilisation la date de création (Windows) ou de modification (Linux)
+                    if os.name == 'nt':
+                        # instauration d'une variable adaptée à Windows
+                        creation_timestamp = os.path.getctime(gpkg_path)
+                    else:  # instauration d'une variable adaptée à Linux
+                        creation_timestamp = os.path.getmtime(gpkg_path)
+
+                    # conversion du timestamp en format de date
+                    date_creation = datetime.fromtimestamp(creation_timestamp).strftime('%Y-%m-%d')
+            except Exception :
+                QgsMessageLog.logMessage(f"Impossible de récupérer la date de création du fichier","Top'Eau", Qgis.Warning)
+
+
+            # 4.3. connexion au GPKG
             conn = sqlite3.connect(gpkg_path)
             cursor = conn.cursor()
 
-            # 4.3. création des tables attributaires à l'intérieur du GPKG
+            # 4.4. création des tables attributaires à l'intérieur du GPKG
+
+            # 4.4.1. création et insertion des données pour la table "zone_etude"
             cursor.execute('''
                 CREATE TABLE zone_etude (
                     id INTEGER PRIMARY KEY AUTOINCREMENT, 
@@ -542,21 +567,20 @@ class TraitementWidget(QDialog, form_traitement):
                     mediane_parcelle REAL
                 )
             ''')
-
             cursor.execute('''
-                            INSERT INTO zone_etude
-                                (nom,
-                                min_parcelle,
-                                max_parcelle,
-                                moyenne_parcelle,
-                                mediane_parcelle) 
-                                VALUES 
-                                (?, 
-                                ?, 
-                                ?, 
-                                ?,
-                                ?)
-                            ''', (
+                INSERT INTO zone_etude(
+                    nom,
+                    min_parcelle,
+                    max_parcelle,
+                    moyenne_parcelle,
+                    mediane_parcelle) 
+                VALUES (
+                    ?, 
+                    ?, 
+                    ?, 
+                    ?,
+                    ?
+                    )''', (
                 self.nomZE.text(),
                 round(self.valeur_min, 2),
                 round(self.valeur_max, 2),
@@ -564,6 +588,9 @@ class TraitementWidget(QDialog, form_traitement):
                 round(self.valeur_med, 2)
             ))
 
+            # 4.4.2. création de la table "hauteur_eau"
+            # NB : l'insertion des données se fait dans une fonction dédiée car ce sont des données récupérées en fonction
+            # des rasters créés et non en fonction du GPKG créé
             cursor.execute('''
                 CREATE TABLE hauteur_eau (
                     id INTEGER PRIMARY KEY AUTOINCREMENT, 
@@ -581,6 +608,8 @@ class TraitementWidget(QDialog, form_traitement):
                 )
             ''')
 
+            # 4.4.3. création de la table "mesure"
+            # NB : la table est vide car c'est celle qui sera utilsiée plus tard pour le requêtage SQL
             cursor.execute('''
                 CREATE TABLE mesure (
                     id INTEGER PRIMARY KEY, 
@@ -588,6 +617,166 @@ class TraitementWidget(QDialog, form_traitement):
                     niveau_eau REAL
                 )
             ''')
+
+            # 4.4.4. création et insertion des données dans la table "metadata_md1"
+            # NB : les noms de champ et leur complétion ont été définis en fonction des documents qualité créés
+            # par Olivier Schmit
+            cursor.execute('''
+                CREATE TABLE metadata_md1 (
+                    id INTEGER PRIMARY KEY, 
+                    nom_du_fichier TEXT,            
+                    mots_clefs TEXT,
+                    createur TEXT,
+                    contributeur TEXT,
+                    referent_metadonnees TEXT,
+                    personnes_a_contacter TEXT,
+                    description TEXT,
+                    date_de_creation DATE,
+                    type_de_donnees TEXT,
+                    format TEXT,
+                    langage TEXT,
+                    relation TEXT,
+                    extension_spatiale TEXT, 
+                    provenance TEXT           
+                    )
+                ''')
+            cursor.execute('''
+                INSERT INTO metadata_md1(
+                    nom_du_fichier,
+                    mots_clefs,
+                    createur,
+                    contributeur,
+                    referent_metadonnees,
+                    personnes_a_contacter,
+                    description,
+                    date_de_creation,
+                    type_de_donnees,
+                    format,
+                    langage,
+                    relation,
+                    extension_spatiale,
+                    provenance
+                ) 
+                VALUES (
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?
+                )''', (
+                    '_topeau.gpkg',
+                    'Variables hydriques, mesure du niveau d\'eau, simulation inondation, parcelles, marais littoraux atlantiques, INRAE',
+                    'Marion Bleuse',
+                    'Julien Ancelin',
+                    'Olivier Schmit',
+                    'marion.bleuse8@gmail.com / julien.ancelin@inrae.fr / lilia.mzali@inrae.fr',
+                    'Se référer à la fenêtre \'A propos\' du Plugin Top\'Eau',
+                    date_creation,
+                    'GeoPackage contenant des fichiers raster et attributaires',
+                    'GeoPackage (.gpkg)',
+                    'Français',
+                    'Se référer à la notice d\'utilisation du Plugin disponible via la fenêtre \'Notice\' du Plugin Top\'Eau',
+                    'Zone d\'étude située au sein d\'un des sites du Projet MAVI porté par l\'Unité Expérimentale INRAE de Saint-Laurent-de-la-Prée',
+                    'Résultat de l\'automatisation de traîtements effectués par le Plugin Top\'Eau'
+                )
+            )
+
+            # 4.4.5. création et insertion des données dans la table "metadata_md2"
+            # NB : les noms de champ et leur complétion ont été définis en fonction des documents qualité créés
+            # par Olivier Schmit
+            cursor.execute('''
+                CREATE TABLE metadata_md2 (
+                    id INTEGER PRIMARY KEY, 
+                    date___mesure TEXT,            
+                    niveau_eau___mesure TEXT,
+                    nom___zone_etude TEXT,
+                    min_parcelle___zone_etude TEXT,
+                    max_parcelle___zone_etude TEXT,
+                    moyenne_parcelle___zone_etude TEXT,
+                    mediane_parcelle___zone_etude TEXT,
+                    niveau_eau___hauteur_eau TEXT,
+                    nom___hauteur_eau TEXT,
+                    surface_eau_m2___hauteur_eau TEXT,
+                    volume_eau_m3___hauteur_eau TEXT,
+                    classe_1___hauteur_eau TEXT,
+                    classe_2___hauteur_eau TEXT, 
+                    classe_3___hauteur_eau TEXT, 
+                    classe_4___hauteur_eau TEXT,
+                    classe_5___hauteur_eau TEXT,
+                    classe_6___hauteur_eau TEXT, 
+                    classe_7___hauteur_eau TEXT         
+                )
+            ''')
+            cursor.execute('''
+                INSERT INTO metadata_md2(
+                    date___mesure,            
+                    niveau_eau___mesure,
+                    nom___zone_etude,
+                    min_parcelle___zone_etude,
+                    max_parcelle___zone_etude,
+                    moyenne_parcelle___zone_etude,
+                    mediane_parcelle___zone_etude,
+                    niveau_eau___hauteur_eau,
+                    nom___hauteur_eau,
+                    surface_eau_m2___hauteur_eau,
+                    volume_eau_m3___hauteur_eau,
+                    classe_1___hauteur_eau,
+                    classe_2___hauteur_eau, 
+                    classe_3___hauteur_eau, 
+                    classe_4___hauteur_eau,
+                    classe_5___hauteur_eau,
+                    classe_6___hauteur_eau, 
+                    classe_7___hauteur_eau
+                ) 
+                VALUES (
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?
+                )''', (
+                    'Date relevée pour la mesure du niveau d\'eau dans la parcelle (bouée, piézomètre, relevé terrain)',
+                    'Niveau relevé pour la mesure du niveau d\'eau dans la parcelle (bouée, piézomètre, relevé terrain)',
+                    'Nom donné par l\'utilisateur pour la zone qu\'il étudie',
+                    'Point le plus bas de la parcelle',
+                    'Point le plus haut de la parcelle',
+                    'Elévation moyenne dans la parcelle',
+                    'Valeur médiane pour l\'élévation de la parcelle',
+                    'Valeur simulée & étudiée pour l\'emprise hydrique dans la parcelle',
+                    'Nom donné par l\'utilisateur pour la zone qu\'il étudie',
+                    'Surface couverte par l\'eau selon le niveau simulé dans la parcelle',
+                    'Volume d\'eau dans la zone d\'étude selon le niveau simulé dans la parcelle',
+                    'Surface couverte par un niveau d\'eau compris dans la classe 1 : 0 - 5 cm',
+                    'Surface couverte par un niveau d\'eau compris dans la classe 2 : 5 - 10 cm',
+                    'Surface couverte par un niveau d\'eau compris dans la classe 3 : 10 - 15 cm',
+                    'Surface couverte par un niveau d\'eau compris dans la classe 4 : 15 - 20 cm',
+                    'Surface couverte par un niveau d\'eau compris dans la classe 5 : 20 - 25 cm',
+                    'Surface couverte par un niveau d\'eau compris dans la classe 6 : 25 - 30 cm',
+                    'Surface couverte par un niveau d\'eau compris dans la classe 7 : > 30 cm'
+                )
+            )
 
             conn.commit()
             conn.close()
@@ -634,11 +823,7 @@ class TraitementWidget(QDialog, form_traitement):
                     return None
 
                 # configuration des options de création du GPKG
-                options = [
-                    '-of', 'GPKG',
-                    '-co', f'RASTER_TABLE={table_name}',
-                    '-co', 'APPEND_SUBDATASET=YES'
-                ]
+                options = ['-of', 'GPKG','-co', f'RASTER_TABLE={table_name}','-co', 'APPEND_SUBDATASET=YES']
 
                 # création du GeoPackage
                 # modifier le type de données à Float32 qui est compatible avec GeoPackage
