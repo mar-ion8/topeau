@@ -21,7 +21,7 @@ class AboutWidget(QDialog, form_about):
        self.interface = interface
        QWidget.__init__(self)
        self.setupUi(self)  # méthode pour construire les widgets
-       self.setWindowTitle("Top'Eau")
+       self.setWindowTitle("Top'Eau - A propos")
        self.fermer.clicked.connect(self.quitter)
 
    def quitter(self):
