@@ -83,7 +83,6 @@ class TraitementWidget(QDialog, form_traitement):
             QgsMapLayerProxyModel.PointLayer |
             QgsMapLayerProxyModel.LineLayer |
             QgsMapLayerProxyModel.PolygonLayer |
-            QgsMapLayerProxyModel.NoGeometry |
             QgsMapLayerProxyModel.PluginLayer
         )
 
@@ -534,7 +533,9 @@ class TraitementWidget(QDialog, form_traitement):
                 raise Exception(f"Impossible de créer le GPKG {gpkg_path}")
             ds = None
 
-            # 4.2. récupération de la date de création du fichier après sa création
+            # 4.2. récupération d'informations nécessaires à l'insertion de données attributaires dans les tables
+
+            # 4.2.1. récupération de la date de création du fichier après sa création
             try:
                 if os.path.exists(gpkg_path):
                     # utilisation la date de création (Windows) ou de modification (Linux)
@@ -549,6 +550,28 @@ class TraitementWidget(QDialog, form_traitement):
             except Exception :
                 QgsMessageLog.logMessage(f"Impossible de récupérer la date de création du fichier","Top'Eau", Qgis.Warning)
 
+            # 4.2.2. récupération de la géométrie du polygone correspondant à la zone d'étude
+            # instauration d'une variable qui servira pour la récupération de la géométrie en WKT
+            geometry_wkt = None
+            try:
+                if hasattr(self, 'selected_vecteur_path') and self.selected_vecteur_path is not None:
+                    # récupération de l'entité du vecteur sélectionné
+                    features = list(self.selected_vecteur_path.getFeatures())
+                    if features:
+                        # récupération de la géométrie de l'entité
+                        geom = features[0].geometry()
+                        if geom and not geom.isEmpty():
+                            # passage de la géométrie récupérée en WKT pour être retranscrite et lue en table
+                            geometry_wkt = geom.asWkt()
+                            QgsMessageLog.logMessage(f"Géométrie récupérée pour l'emprise", "Top'Eau", Qgis.Info)
+                        else:
+                            QgsMessageLog.logMessage(f"Géométrie vide dans selected_vecteur", "Top'Eau", Qgis.Warning)
+                    else:
+                        QgsMessageLog.logMessage(f"Aucune entité trouvée dans selected_vecteur", "Top'Eau", Qgis.Warning)
+                else:
+                    QgsMessageLog.logMessage(f"Variable selected_vecteur non disponible", "Top'Eau", Qgis.Warning)
+            except Exception as geom_error:
+                QgsMessageLog.logMessage(f"Erreur lors de la récupération de la géométrie : {str(geom_error)}","Top'Eau", Qgis.Warning)
 
             # 4.3. connexion au GPKG
             conn = sqlite3.connect(gpkg_path)
@@ -561,6 +584,7 @@ class TraitementWidget(QDialog, form_traitement):
                 CREATE TABLE zone_etude (
                     id INTEGER PRIMARY KEY AUTOINCREMENT, 
                     nom TEXT,
+                    emprise GEOMETRY,
                     min_parcelle REAL,
                     max_parcelle REAL,
                     moyenne_parcelle REAL,
@@ -570,18 +594,21 @@ class TraitementWidget(QDialog, form_traitement):
             cursor.execute('''
                 INSERT INTO zone_etude(
                     nom,
+                    emprise,
                     min_parcelle,
                     max_parcelle,
                     moyenne_parcelle,
                     mediane_parcelle) 
                 VALUES (
                     ?, 
+                    ?,
                     ?, 
                     ?, 
                     ?,
                     ?
                     )''', (
                 self.nomZE.text(),
+                geometry_wkt,
                 round(self.valeur_min, 2),
                 round(self.valeur_max, 2),
                 round(self.valeur_moy, 2),
@@ -939,4 +966,3 @@ class TraitementWidget(QDialog, form_traitement):
         finally:
             if 'conn' in locals():
                 conn.close()
-
