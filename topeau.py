@@ -86,10 +86,16 @@ class TopEau:
         self.toolbar.setObjectName("TopEau")
 
         # Bouton Analyse raster - différence entre le niveau d'eau et le sol
-        self.actionTraitement = QAction("Analyse raster", self.interface.mainWindow())
+        self.actionTraitement = QAction("1. Analyse raster", self.interface.mainWindow())
         self.actionTraitement.triggered.connect(self.openTraitement)
-        # Bouton Calculs automatiques
-        self.actionCalculs = QAction("Analyse fine des relevés eau", self.interface.mainWindow())
+        # Bouton Import des données eau
+        self.actionImport = QAction("2. Import des données de mesure d'eau", self.interface.mainWindow())
+        self.actionImport.triggered.connect(self.openImport)
+        # Bouton Requêtage biodiv
+        self.actionBiodiv = QAction("3.a Analyse fine : écoute biodiversité", self.interface.mainWindow())
+        self.actionBiodiv.triggered.connect(self.openBiodiv)
+        # Bouton Calculs gestion eau
+        self.actionCalculs = QAction("3.b Analyse fine : indicateur pour la gestion de l'eau", self.interface.mainWindow())
         self.actionCalculs.triggered.connect(self.openCalculs)
         # Bouton Notice
         self.actionHelp = QAction("Notice", self.interface.mainWindow())
@@ -100,6 +106,8 @@ class TopEau:
 
         # Ajout des boutons dans la barres des menus
         self.menu.addAction(self.actionTraitement)
+        self.menu.addAction(self.actionImport)
+        self.menu.addAction(self.actionBiodiv)
         self.menu.addAction(self.actionCalculs)
         self.menu.addSeparator()
         self.menu.addAction(self.actionHelp)
@@ -115,9 +123,14 @@ class TopEau:
         # message permettant de contrôler la validité du code dans la console Python de QGIS
         print('ok')
 
-    def openCalculs(self):
+    def openImport(self):
         print("ok")
 
+    def openBiodiv(self):
+        print("ok")
+
+    def openCalculs(self):
+        print("ok")
 
     def openHelp(self):
         # accès au dossier « notice » et au fichier notice.pdf pour obtenir de l'aide avec l'utilisation plugin
