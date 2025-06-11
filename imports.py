@@ -10,6 +10,12 @@ from qgis.core import Qgis, QgsMessageLog
 from qgis import processing
 import os
 
+#import librairie nécessaire au requêtage SQL
+import sqlite3
+
+# import librairie lecture CSV
+import pandas as pd
+
 # appel emplacement des fichiers de stockage des sorties temporaires -- style et temp
 temp_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "temp")
 
@@ -35,6 +41,92 @@ class ImportWidget(QDialog, form_traitement):
         # Bouton "OK / Annuler"
         self.terminer.rejected.connect(self.reject)
 
+        # connexion de la barre de progression
+        self.progressBar.setValue(0)
+
+        # Bouton "Générer l'import'"
+        self.generer.clicked.connect(self.on_generer_clicked)
+
+
     def reject(self):
         QDialog.reject(self)
         return
+
+    # 1. fonction permettant de récupérer les fichiers sélectionnés par l'utilisateur et de gérer leur validité
+    # fonction utile pour gérer le CSV dans une variable pour le récupérer en dataframe (df) avec Pandas par la suite
+    def on_generer_clicked(self):
+
+        # 1.1. récupération des chemins au moment du clic
+        selected_GPKG = self.inputGPKG.filePath()
+        selected_CSV = self.inputReleves.filePath()
+
+        # 1.2. vérification que les fichiers sont sélectionnés
+        if not selected_GPKG or not selected_CSV:
+            QgsMessageLog.logMessage("Veuillez sélectionner les fichiers GPKG et CSV", "Top'Eau", Qgis.Warning)
+            return
+
+        # 1.3. appel de la fonction d'insertion
+        self.inserer_donnees(selected_GPKG, selected_CSV)
+
+    # 2. fonction permettant de récupérer les données depuis le CSV et de les insérer dans le GPKG sélectionné
+    def inserer_donnees(self, selected_GPKG, selected_CSV):
+        try:
+            # 2.1. lecture du CSV avec Pandas
+            df = pd.read_csv(selected_CSV)
+
+            # 2.2. vérification de l'existence des colonnes
+            if 'Time' not in df.columns:
+                QgsMessageLog.logMessage("Colonne 'Time' non trouvée dans le CSV", "Top'Eau", Qgis.Critical)
+                return False
+
+            if 'median_height_24h Physalita2' not in df.columns:
+                QgsMessageLog.logMessage("Colonne 'median_height_24h Physalita2' non trouvée dans le CSV", "Top'Eau",
+                                         Qgis.Critical)
+                return False
+
+            # 2.3. récupération des données comprises dans le CSV via Pandas
+            time_data = df['Time']
+            niveau_data = df['median_height_24h Physalita2']
+
+            # 2.4. connexion SQLite directe au GeoPackage
+            conn = sqlite3.connect(selected_GPKG)
+            cursor = conn.cursor()
+
+            # 2.5. insertion ligne par ligne des données et conversion en string pour éviter les erreurs de type
+            for i in range(len(df)):
+                cursor.execute('''
+                       INSERT INTO mesure 
+                       (date, 
+                       niveau_eau) 
+                       VALUES (?, ?)
+                   ''', (
+                    str(time_data.iloc[i]),
+                    str(niveau_data.iloc[i])
+                    if pd.notna(niveau_data.iloc[i])
+                    else None
+                ))
+
+            conn.commit()
+            QgsMessageLog.logMessage(f"Table SQLite implémentée avec succès - {len(df)} lignes insérées", "Top'Eau",
+                                     Qgis.Success)
+
+            # mise à jour de la barre de progression
+            self.progressBar.setValue(100)
+
+            return True
+
+        except FileNotFoundError as e:
+            QgsMessageLog.logMessage(f"Fichier non trouvé: {str(e)}", "Top'Eau", Qgis.Critical)
+            return False
+        except pd.errors.EmptyDataError:
+            QgsMessageLog.logMessage("Le fichier CSV est vide", "Top'Eau", Qgis.Critical)
+            return False
+        except sqlite3.Error as e:
+            QgsMessageLog.logMessage(f"Erreur SQLite: {str(e)}", "Top'Eau", Qgis.Critical)
+            return False
+        except Exception as e:
+            QgsMessageLog.logMessage(f"Erreur inattendue: {str(e)}", "Top'Eau", Qgis.Critical)
+            return False
+        finally:
+            if 'conn' in locals():
+                conn.close()
