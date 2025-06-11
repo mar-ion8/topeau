@@ -27,6 +27,8 @@ from qgis.PyQt.QtWidgets import *
 
 #import du fichier traitement concernant l'analyse raster
 from .traitement import *
+#import du fichier traitement concernant l'import des données eau
+from .imports import *
 
 # import du fichier à propos
 from .about import *
@@ -124,6 +126,8 @@ class TopEau:
         print('ok')
 
     def openImport(self):
+        imports = ImportWidget(self.interface)
+        result = imports.exec_()
         print("ok")
 
     def openBiodiv(self):
