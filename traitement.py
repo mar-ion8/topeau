@@ -310,6 +310,9 @@ class TraitementWidget(QDialog, form_traitement):
         # mise à jour de la barre de progression à 100% à la fin de la génération des rasters
         self.progressBar.setValue(100)
 
+        # AJOUT : Chargement automatique du GPKG dans QGIS
+        self.charger_gpkg_dans_qgis(gpkg_path, couches_generees)
+
         # affichage du nombre de rasters générés
         QMessageBox.information(self, "Traitement terminé",
                                 f"{len(couches_generees)} rasters ont été générés avec succès.")
@@ -966,3 +969,103 @@ class TraitementWidget(QDialog, form_traitement):
         finally:
             if 'conn' in locals():
                 conn.close()
+
+    # 5. fonction pour charger automatiquement les tables et rasters du GPKG dans QGIS
+    def charger_gpkg_dans_qgis(self, gpkg_path, couches_generees):
+
+        try:
+            # référence à l'interface QGIS
+            from qgis.utils import iface
+
+            # 5.1. création d'un groupe pour organiser les couches
+            nom_ze = self.nomZE.text()
+            root = QgsProject.instance().layerTreeRoot()
+            group = root.addGroup(f"Top'Eau - {nom_ze}")
+
+            # 5.2. chargement des tables attributaires
+            tables_attributaires = ['zone_etude', 'hauteur_eau', 'mesure', 'metadata_md1', 'metadata_md2']
+
+            for table in tables_attributaires:
+                try:
+                    # 5.2.1. création d'un URI pour les tables du GPKG
+                    uri = f"{gpkg_path}|layername={table}"
+
+                    # 5.2.2. création de la couche
+                    layer = QgsVectorLayer(uri, f"{table}", "ogr")
+
+                    if layer.isValid():
+                        # 5.2.3. ajout de la couche au projet dans le groupe
+                        QgsProject.instance().addMapLayer(layer, False)
+                        group.addLayer(layer)
+                        QgsMessageLog.logMessage(f"Table {table} chargée avec succès", "Top'Eau", Qgis.Info)
+                    else:
+                        QgsMessageLog.logMessage(f"Impossible de charger la table {table}", "Top'Eau", Qgis.Warning)
+
+                except Exception as e:
+                    QgsMessageLog.logMessage(f"Erreur lors du chargement de la table {table}: {str(e)}", "Top'Eau",
+                                             Qgis.Warning)
+
+            # 5.3. chargement des rasters
+
+            # 5.3.1. récupération de la liste des rasters dans le GPKG
+            rasters = self.lister_rasters_gpkg(gpkg_path)
+
+            for raster_name in rasters:
+                try:
+                    # 5.3.2. création d'un URI pour les rasters du GPKG
+                    uri = f"GPKG:{gpkg_path}:{raster_name}"
+
+                    # 5.3.3. création de la couche raster
+                    layer = QgsRasterLayer(uri, raster_name, "gdal")
+
+                    if layer.isValid():
+                        # 5.3.4. ajout de la couche au projet dans le groupe
+                        QgsProject.instance().addMapLayer(layer, False)
+                        group.addLayer(layer)
+
+                        QgsMessageLog.logMessage(f"Raster {raster_name} chargé avec succès", "Top'Eau", Qgis.Info)
+                    else:
+                        QgsMessageLog.logMessage(f"Impossible de charger le raster {raster_name}", "Top'Eau",
+                                                 Qgis.Warning)
+
+                except Exception as e:
+                    QgsMessageLog.logMessage(f"Erreur lors du chargement du raster {raster_name}: {str(e)}", "Top'Eau",
+                                             Qgis.Warning)
+
+            # 5.4. actualisation de la vue
+            iface.mapCanvas().refresh()
+
+            QMessageBox.information(self, "Chargement terminé",
+                                    f"Le GPKG a été chargé avec succès dans QGIS.\n"
+                                    f"Tables et rasters disponibles dans le groupe '{nom_ze}'.")
+
+        except Exception as e:
+            QgsMessageLog.logMessage(f"Erreur lors du chargement du GPKG: {str(e)}", "Top'Eau", Qgis.Critical)
+            QMessageBox.warning(self, "Erreur", f"Erreur lors du chargement du GPKG:\n{str(e)}")
+
+    # fonction nécessaire à la fonction précédente
+    # fonction permettant de lister les rasters présents dans le GPKG
+    def lister_rasters_gpkg(self, gpkg_path):
+
+        rasters = []
+        try:
+            # connexion au GPKG pour lister les rasters
+            conn = sqlite3.connect(gpkg_path)
+            cursor = conn.cursor()
+
+            # requête pour récupérer les tables raster
+            cursor.execute("""
+                SELECT table_name 
+                FROM gpkg_contents 
+                WHERE data_type = 'tiles' OR data_type = '2d-gridded-coverage'
+            """)
+
+            results = cursor.fetchall()
+            rasters = [row[0] for row in results]
+
+            conn.close()
+
+        except Exception as e:
+            QgsMessageLog.logMessage(f"Erreur lors de la récupération des rasters: {str(e)}", "Top'Eau", Qgis.Warning)
+
+        return rasters
