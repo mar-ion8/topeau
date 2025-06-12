@@ -29,6 +29,8 @@ from qgis.PyQt.QtWidgets import *
 from .traitement import *
 #import du fichier traitement concernant l'import des données eau
 from .imports import *
+#import du fichier traitement concernant l'analyse biodiversité
+from .biodiv import *
 
 # import du fichier à propos
 from .about import *
@@ -116,21 +118,26 @@ class TopEau:
         self.menu.addAction(self.actionAbout)
         menuBar = self.interface.mainWindow().menuBar()
 
-        # Création et insertion du menu
+        # création et insertion du menu
         menuBar.insertMenu(self.interface.firstRightStandardMenu().menuAction(), self.menu)
 
+    # connexion au fichier traitement.py relatif à l'analyse raster
     def openTraitement(self):
         traitement = TraitementWidget(self.interface)
         result = traitement.exec_()
         # message permettant de contrôler la validité du code dans la console Python de QGIS
         print('ok')
 
+    # connexion au fichier imports.py relatif à l'import des données eau dans la table mesure dédiée
     def openImport(self):
         imports = ImportWidget(self.interface)
         result = imports.exec_()
         print("ok")
 
+    # connexion au fichier biodiv.py relatif à l'analyse ponctuelle des données eau pour l'écoute biodiv
     def openBiodiv(self):
+        biodiv = BiodivWidget(self.interface)
+        result = biodiv.exec_()
         print("ok")
 
     def openCalculs(self):
