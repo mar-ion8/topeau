@@ -418,7 +418,7 @@ class TraitementWidget(QDialog, form_traitement):
         # 3.7.1. utilisation de l'algorithme GRASS "r.resamp.Stats" pour le ré-échantillonnage
         processing.run("grass:r.resamp.stats", {
             'input': layer_reclass,
-            'method': 1,  #mediane
+            'method': 1,  # mediane
             'quantile': 0.5,
             '-n': True,
             '-w': False,
@@ -556,7 +556,7 @@ class TraitementWidget(QDialog, form_traitement):
             try:
                 if hasattr(self, 'selected_vecteur_path') and self.selected_vecteur_path is not None:
                     # récupération de l'entité du vecteur sélectionné
-                    features = list(self.selected_vecteur_path.getFeatures())
+                    features = (self.selected_vecteur_path.getFeatures())
                     if features:
                         # récupération de la géométrie de l'entité
                         geom = features[0].geometry()
@@ -787,21 +787,21 @@ class TraitementWidget(QDialog, form_traitement):
                     'Date relevée pour la mesure du niveau d\'eau dans la parcelle (bouée, piézomètre, relevé terrain)',
                     'Niveau relevé pour la mesure du niveau d\'eau dans la parcelle (bouée, piézomètre, relevé terrain)',
                     'Nom donné par l\'utilisateur pour la zone qu\'il étudie',
-                    'Point le plus bas de la parcelle',
-                    'Point le plus haut de la parcelle',
-                    'Elévation moyenne dans la parcelle',
-                    'Valeur médiane pour l\'élévation de la parcelle',
-                    'Valeur simulée & étudiée pour l\'emprise hydrique dans la parcelle',
+                    'Point le plus bas de la parcelle (en mètre)',
+                    'Point le plus haut de la parcelle (en mètre)',
+                    'Elévation moyenne dans la parcelle (en mètre)',
+                    'Valeur médiane pour l\'élévation de la parcelle (en mètre)',
+                    'Valeur simulée & étudiée pour l\'emprise hydrique dans la parcelle (en mètre)',
                     'Nom donné par l\'utilisateur pour la zone qu\'il étudie',
-                    'Surface couverte par l\'eau selon le niveau simulé dans la parcelle',
-                    'Volume d\'eau dans la zone d\'étude selon le niveau simulé dans la parcelle',
-                    'Surface couverte par un niveau d\'eau compris dans la classe 1 : 0 - 5 cm',
-                    'Surface couverte par un niveau d\'eau compris dans la classe 2 : 5 - 10 cm',
-                    'Surface couverte par un niveau d\'eau compris dans la classe 3 : 10 - 15 cm',
-                    'Surface couverte par un niveau d\'eau compris dans la classe 4 : 15 - 20 cm',
-                    'Surface couverte par un niveau d\'eau compris dans la classe 5 : 20 - 25 cm',
-                    'Surface couverte par un niveau d\'eau compris dans la classe 6 : 25 - 30 cm',
-                    'Surface couverte par un niveau d\'eau compris dans la classe 7 : > 30 cm'
+                    'Surface couverte par l\'eau selon le niveau simulé dans la parcelle (en m²)',
+                    'Volume d\'eau dans la zone d\'étude selon le niveau simulé dans la parcelle (en m³)',
+                    'Surface couverte par un niveau d\'eau compris dans la classe 1 : 0 - 5 cm (en m²)',
+                    'Surface couverte par un niveau d\'eau compris dans la classe 2 : 5 - 10 cm (en m²)',
+                    'Surface couverte par un niveau d\'eau compris dans la classe 3 : 10 - 15 cm (en m²)',
+                    'Surface couverte par un niveau d\'eau compris dans la classe 4 : 15 - 20 cm (en m²)',
+                    'Surface couverte par un niveau d\'eau compris dans la classe 5 : 20 - 25 cm (en m²)',
+                    'Surface couverte par un niveau d\'eau compris dans la classe 6 : 25 - 30 cm (en m²)',
+                    'Surface couverte par un niveau d\'eau compris dans la classe 7 : > 30 cm (en m²)'
                 )
             )
 
