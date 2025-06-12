@@ -16,7 +16,7 @@ import sqlite3
 # import librairie lecture CSV
 import pandas as pd
 
-# appel emplacement des fichiers de stockage des sorties temporaires -- style et temp
+# appel emplacement des fichiers de stockage des sorties temporaires -- temp
 temp_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "temp")
 
 # lien entre traitement.py et traitement.ui
@@ -36,7 +36,7 @@ class ImportWidget(QDialog, form_traitement):
         # ajustement de la taille de la fenêtre pour qu'elle soit fixe
         #self.setFixedSize(600, 400)
         # nom donné à la fenêtre
-        self.setWindowTitle("Top'Eau - Import des données eau (relevés bouées, terrain et piézomètres")
+        self.setWindowTitle("Top'Eau - Import des données eau (relevés bouées, terrain et piézomètres)")
 
         # Bouton "OK / Annuler"
         self.terminer.rejected.connect(self.reject)
@@ -44,8 +44,11 @@ class ImportWidget(QDialog, form_traitement):
         # connexion de la barre de progression
         self.progressBar.setValue(0)
 
-        # Bouton "Générer l'import'"
+        # Bouton "Générer l'import des données eau"
         self.generer.clicked.connect(self.inserer_donnees)
+
+        # Bouton "Effacer"
+        self.erase.clicked.connect(self.effacer_donnees)
 
     def reject(self):
         QDialog.reject(self)
@@ -132,3 +135,28 @@ class ImportWidget(QDialog, form_traitement):
         finally:
             if 'conn' in locals():
                 conn.close()
+
+    # 2. si l'utilisateur utilise un GPKG dont la table mesure est déjà complétée, la fonction permet de supprimer les données existantes
+    def effacer_donnees(self):
+
+        # 2.1. récupération des chemins au moment du clic
+        selected_GPKG = self.inputGPKG.filePath()
+
+        # 2.2. connexion SQLite directe au GeoPackage
+        conn = sqlite3.connect(selected_GPKG)
+        cursor = conn.cursor()
+
+        # 2.3. suppression des données existantes de la table mesure
+        cursor.execute('''
+                        DELETE FROM mesure
+                        '''
+                       )
+
+        conn.commit()
+        conn.close()
+
+        QgsMessageLog.logMessage(f"Eléments supprimés de la table mesure avec succès", "Top'Eau", Qgis.Info)
+
+
+
+
