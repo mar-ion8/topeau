@@ -45,16 +45,14 @@ class ImportWidget(QDialog, form_traitement):
         self.progressBar.setValue(0)
 
         # Bouton "Générer l'import'"
-        self.generer.clicked.connect(self.on_generer_clicked)
-
+        self.generer.clicked.connect(self.inserer_donnees)
 
     def reject(self):
         QDialog.reject(self)
         return
 
-    # 1. fonction permettant de récupérer les fichiers sélectionnés par l'utilisateur et de gérer leur validité
-    # fonction utile pour gérer le CSV dans une variable pour le récupérer en dataframe (df) avec Pandas par la suite
-    def on_generer_clicked(self):
+    # 1. fonction permettant de récupérer les données depuis le CSV et de les insérer dans le GPKG sélectionné
+    def inserer_donnees(self):
 
         # 1.1. récupération des chemins au moment du clic
         selected_GPKG = self.inputGPKG.filePath()
@@ -65,16 +63,14 @@ class ImportWidget(QDialog, form_traitement):
             QgsMessageLog.logMessage("Veuillez sélectionner les fichiers GPKG et CSV", "Top'Eau", Qgis.Warning)
             return
 
-        # 1.3. appel de la fonction d'insertion
-        self.inserer_donnees(selected_GPKG, selected_CSV)
+        # mise à jour de la barre de progression
+        self.progressBar.setValue(25)
 
-    # 2. fonction permettant de récupérer les données depuis le CSV et de les insérer dans le GPKG sélectionné
-    def inserer_donnees(self, selected_GPKG, selected_CSV):
         try:
-            # 2.1. lecture du CSV avec Pandas
+            # 1.3. lecture du CSV avec Pandas
             df = pd.read_csv(selected_CSV)
 
-            # 2.2. vérification de l'existence des colonnes
+            # 1.4. vérification de l'existence des colonnes
             if 'Time' not in df.columns:
                 QgsMessageLog.logMessage("Colonne 'Time' non trouvée dans le CSV", "Top'Eau", Qgis.Critical)
                 return False
@@ -84,15 +80,21 @@ class ImportWidget(QDialog, form_traitement):
                                          Qgis.Critical)
                 return False
 
-            # 2.3. récupération des données comprises dans le CSV via Pandas
+            # 1.5. récupération des données comprises dans le CSV via Pandas
             time_data = df['Time']
             niveau_data = df['median_height_24h Physalita2']
 
-            # 2.4. connexion SQLite directe au GeoPackage
+            # mise à jour de la barre de progression
+            self.progressBar.setValue(50)
+
+            # 1.6. connexion SQLite directe au GeoPackage
             conn = sqlite3.connect(selected_GPKG)
             cursor = conn.cursor()
 
-            # 2.5. insertion ligne par ligne des données et conversion en string pour éviter les erreurs de type
+            # mise à jour de la barre de progression
+            self.progressBar.setValue(75)
+
+            # 1.7. insertion ligne par ligne des données et conversion en string pour éviter les erreurs de type
             for i in range(len(df)):
                 cursor.execute('''
                        INSERT INTO mesure 
