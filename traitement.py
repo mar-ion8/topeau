@@ -74,8 +74,7 @@ class TraitementWidget(QDialog, form_traitement):
         # association de filtres à la sélection de couches dans le projet QGIS
         self.inputRaster_2.setFilters(
             QgsMapLayerProxyModel.RasterLayer |
-            QgsMapLayerProxyModel.PluginLayer |
-            QgsMapLayerProxyModel.NoGeometry
+            QgsMapLayerProxyModel.PluginLayer
         )
         self.inputVecteur_2.setFilters(
             QgsMapLayerProxyModel.HasGeometry |
@@ -634,7 +633,8 @@ class TraitementWidget(QDialog, form_traitement):
                     classe_4 REAL,
                     classe_5 REAL,
                     classe_6 REAL,
-                    classe_7 REAL
+                    classe_7 REAL,
+                    nom_fichier TEXT
                 )
             ''')
 
@@ -915,6 +915,11 @@ class TraitementWidget(QDialog, form_traitement):
                 QgsMessageLog.logMessage(f"GPKG inexistant pour ajout données: {gpkg_path}", "Top'Eau", Qgis.Warning)
                 return False
 
+            # AJOUT : génération du nom du raster pour la table
+            nom_ze = self.nomZE.text()
+            niveau_cm = int(self.current_level * 100)
+            raster_name = f"{nom_ze}_{niveau_cm}cm_topeau.gpkg"
+
             # 3.7.1. connexion SQLite directe au GeoPackage
             conn = sqlite3.connect(gpkg_path)
             cursor = conn.cursor()
@@ -932,11 +937,13 @@ class TraitementWidget(QDialog, form_traitement):
                    classe_4,
                    classe_5,
                    classe_6,
-                   classe_7) 
+                   classe_7,
+                   nom_fichier) 
                    VALUES 
                    (?, 
                    ?, 
                    ?, 
+                   ?,
                    ?,
                    ?,
                    ?,
@@ -956,7 +963,8 @@ class TraitementWidget(QDialog, form_traitement):
                 round(classe_4_surf, 2),
                 round(classe_5_surf, 2),
                 round(classe_6_surf, 2),
-                round(classe_7_surf, 2)
+                round(classe_7_surf, 2),
+                raster_name
             ))
 
             conn.commit()
