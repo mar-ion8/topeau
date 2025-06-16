@@ -915,7 +915,7 @@ class TraitementWidget(QDialog, form_traitement):
                 QgsMessageLog.logMessage(f"GPKG inexistant pour ajout données: {gpkg_path}", "Top'Eau", Qgis.Warning)
                 return False
 
-            # AJOUT : génération du nom du raster pour la table
+            # génération du nom du raster pour la table
             nom_ze = self.nomZE.text()
             niveau_cm = int(self.current_level * 100)
             raster_name = f"{nom_ze}_{niveau_cm}cm_topeau.gpkg"
