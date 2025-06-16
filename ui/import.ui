@@ -552,7 +552,7 @@
    <property name="geometry">
     <rect>
      <x>150</x>
-     <y>300</y>
+     <y>260</y>
      <width>151</width>
      <height>23</height>
     </rect>
@@ -570,7 +570,7 @@
    <property name="geometry">
     <rect>
      <x>20</x>
-     <y>210</y>
+     <y>170</y>
      <width>391</width>
      <height>41</height>
     </rect>
@@ -592,7 +592,7 @@
    <property name="geometry">
     <rect>
      <x>20</x>
-     <y>380</y>
+     <y>340</y>
      <width>191</width>
      <height>27</height>
     </rect>
@@ -602,7 +602,7 @@
    <property name="geometry">
     <rect>
      <x>20</x>
-     <y>360</y>
+     <y>320</y>
      <width>391</width>
      <height>16</height>
     </rect>
@@ -621,7 +621,7 @@
    <property name="geometry">
     <rect>
      <x>20</x>
-     <y>410</y>
+     <y>370</y>
      <width>511</width>
      <height>16</height>
     </rect>
@@ -640,7 +640,7 @@
    <property name="geometry">
     <rect>
      <x>20</x>
-     <y>430</y>
+     <y>390</y>
      <width>160</width>
      <height>21</height>
     </rect>
@@ -650,7 +650,7 @@
    <property name="geometry">
     <rect>
      <x>90</x>
-     <y>470</y>
+     <y>430</y>
      <width>251</width>
      <height>23</height>
     </rect>
@@ -687,7 +687,7 @@
    <property name="geometry">
     <rect>
      <x>250</x>
-     <y>390</y>
+     <y>350</y>
      <width>511</width>
      <height>16</height>
     </rect>
@@ -702,41 +702,12 @@
     <string>Nom du champ relatif au relevé eau : </string>
    </property>
   </widget>
-  <widget class="QLineEdit" name="nomZE">
+  <widget class="QLineEdit" name="nomChamp">
    <property name="geometry">
     <rect>
-     <x>320</x>
-     <y>410</y>
-     <width>113</width>
-     <height>21</height>
-    </rect>
-   </property>
-  </widget>
-  <widget class="QLabel" name="label_14">
-   <property name="geometry">
-    <rect>
-     <x>20</x>
-     <y>150</y>
-     <width>511</width>
-     <height>16</height>
-    </rect>
-   </property>
-   <property name="font">
-    <font>
-     <family>Tw Cen MT</family>
-     <pointsize>9</pointsize>
-    </font>
-   </property>
-   <property name="text">
-    <string>Ou table &quot;mesure&quot; depuis le projet en cours :</string>
-   </property>
-  </widget>
-  <widget class="QgsMapLayerComboBox" name="inputReleves_3">
-   <property name="geometry">
-    <rect>
-     <x>20</x>
-     <y>170</y>
-     <width>160</width>
+     <x>240</x>
+     <y>390</y>
+     <width>191</width>
      <height>21</height>
     </rect>
    </property>
@@ -745,7 +716,7 @@
    <property name="geometry">
     <rect>
      <x>20</x>
-     <y>240</y>
+     <y>200</y>
      <width>411</width>
      <height>61</height>
     </rect>
@@ -763,6 +734,25 @@
     <bool>true</bool>
    </property>
   </widget>
+  <widget class="QLabel" name="label_12">
+   <property name="geometry">
+    <rect>
+     <x>230</x>
+     <y>370</y>
+     <width>511</width>
+     <height>16</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Tw Cen MT</family>
+     <pointsize>9</pointsize>
+    </font>
+   </property>
+   <property name="text">
+    <string>exemple : median_height_24h Physalita2</string>
+   </property>
+  </widget>
   <zorder>line</zorder>
   <zorder>terminer</zorder>
   <zorder>label</zorder>
@@ -777,10 +767,9 @@
   <zorder>generer</zorder>
   <zorder>progressBar</zorder>
   <zorder>label_11</zorder>
-  <zorder>nomZE</zorder>
-  <zorder>label_14</zorder>
-  <zorder>inputReleves_3</zorder>
+  <zorder>nomChamp</zorder>
   <zorder>label_10</zorder>
+  <zorder>label_12</zorder>
  </widget>
  <customwidgets>
   <customwidget>
