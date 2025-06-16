@@ -56,7 +56,6 @@ class ImportWidget(QDialog, form_traitement):
         )
 
         # association de l'import de fichiers aux fonctions de désactivation des listes déroulantes
-        #self.inputGPKG.fileChanged.connect(self.maj_etat_inputGPKG2)
         self.inputReleves.fileChanged.connect(self.maj_etat_inputReleves2)
 
     def reject(self):
@@ -78,6 +77,7 @@ class ImportWidget(QDialog, form_traitement):
         # 1.1. récupération des chemins et variables au moment du clic
         selected_GPKG = self.inputGPKG.filePath()
         nom_champ = self.nomChamp.text()
+        nom_date = self.nomChamp_2.text()
         selected_CSV = self.inputReleves.filePath()
 
         # 1.2. vérification que les fichiers sont sélectionnés
@@ -93,10 +93,13 @@ class ImportWidget(QDialog, form_traitement):
             QMessageBox.warning(self, "Erreur", "Veuillez renseigner le nom du champ niveau d'eau.")
             return
 
-        # 1.3. Déterminer la source des données
+        if not nom_date or nom_date.strip() == "":
+            QMessageBox.warning(self, "Erreur", "Veuillez renseigner le nom du champ date.")
+            return
+
+        # 1.3. Déterminer la source des données...
         use_layer = False
         layer = None
-
         # ...localement...
         if not selected_CSV or selected_CSV.strip() == "":
             # ...ou récupération de la couche sélectionnée depuis le projet
@@ -107,59 +110,59 @@ class ImportWidget(QDialog, form_traitement):
             use_layer = True
 
         else:
-        # Vérifier que le fichier CSV existe
+        # vérification que le fichier CSV existe
             if not os.path.exists(selected_CSV):
                 QMessageBox.warning(self, "Erreur", f"Le fichier CSV n'existe pas : {selected_CSV}")
                 return
 
                 # Convertir la couche QGIS en DataFrame
         try:
-            # 1.4. Lecture des données selon la source
+            # 1.4. lecture des données selon la source
             if use_layer:
                 features = []
                 for feature in layer.getFeatures():
                     features.append(feature.attributes())
 
-            # Créer le DataFrame avec les noms des champs
+            # 1.5. création du DataFrame avec les noms des champs
                 field_names = [field.name() for field in layer.fields()]
                 df = pd.DataFrame(features, columns=field_names)
 
                 QgsMessageLog.logMessage(f"Données lues depuis la couche : {layer.name()}", "Top'Eau", Qgis.Info)
 
             else:
-                # Lire depuis le fichier CSV
+                # OU : lecture depuis le fichier CSV
                 df = pd.read_csv(selected_CSV)
                 QgsMessageLog.logMessage(f"Données lues depuis le fichier : {selected_CSV}", "Top'Eau", Qgis.Info)
 
-            # Vérifier que le DataFrame n'est pas vide
+            # vérification que le DataFrame n'est pas vide
             if df.empty:
                 QgsMessageLog.logMessage("Les données sont vides", "Top'Eau", Qgis.Critical)
                 return False
 
-            # 1.5. vérification de l'existence des colonnes
-            if 'Time' not in df.columns:
-                QgsMessageLog.logMessage(f"Colonne 'Time' non trouvée. Colonnes disponibles : {list(df.columns)}", "Top'Eau", Qgis.Critical)
+            # 1.6. vérification de l'existence des colonnes/de la présence des variables dans les fichiers
+            if nom_date not in df.columns:
+                QgsMessageLog.logMessage(f"Colonne '{nom_date}' non trouvée. Colonnes disponibles : {list(df.columns)}", "Top'Eau", Qgis.Critical)
                 return False
 
             if nom_champ not in df.columns:
                 QgsMessageLog.logMessage(f"Colonne '{nom_champ}' non trouvée. Colonnes disponibles : {list(df.columns)}", "Top'Eau", Qgis.Critical)
                 return False
 
-            # 1.6. récupération des données comprises dans le DataFrame
-            time_data = df['Time']
+            # 1.7. récupération des données comprises dans le DataFrame
+            time_data = df[nom_date]
             niveau_data = df[nom_champ]
 
             # mise à jour de la barre de progression
             self.progressBar.setValue(25)
 
-            # 1.6. connexion SQLite directe au GeoPackage
+            # 1.8. connexion SQLite directe au GeoPackage
             conn = sqlite3.connect(selected_GPKG)
             cursor = conn.cursor()
 
             # mise à jour de la barre de progression
             self.progressBar.setValue(75)
 
-            # 1.7. insertion ligne par ligne des données et conversion en string pour éviter les erreurs de type
+            # 1.9. insertion ligne par ligne des données et conversion en string pour éviter les erreurs de type
             for i in range(len(df)):
                 cursor.execute('''
                        INSERT INTO mesure 
