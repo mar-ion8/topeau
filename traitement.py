@@ -8,6 +8,7 @@ from PyQt5.QtGui import *
 from qgis.core import *
 from qgis.core import Qgis, QgsMessageLog
 from qgis import processing
+from qgis.core import QgsRasterLayer
 import os
 # import des librairies nécessaires à la lecture de données géospatiales
 import json
@@ -883,9 +884,51 @@ class TraitementWidget(QDialog, form_traitement):
                 dst_ds = None
                 src_ds = None
 
-                # vérification de la création des GPKG
+                # vérification de la création du GPKG
                 if os.path.exists(gpkg_path):
                     QgsMessageLog.logMessage(f"GeoPackage créé avec succès: {gpkg_path}", "Top'Eau", Qgis.Success)
+    
+                    # --- INJECTION DE LA SYMBOLOGIE QML DANS LE GPKG ---
+                    qml_file = os.path.join(os.path.dirname(__file__), 'style', 'symbo.qml')
+                    try:
+                        # 1) Charger la couche raster depuis le GeoPackage
+                        uri = f"GPKG:{gpkg_path}:{table_name}"
+                        rlayer = QgsRasterLayer(uri, table_name, 'gdal')
+                        if not rlayer.isValid():
+                            raise ValueError(f"Impossible de charger {uri} comme QgsRasterLayer")
+    
+                        # 2) Enregistrer temporairement dans le projet (nécessaire pour saveStyleToDatabase)
+                        proj = QgsProject.instance()
+                        proj.addMapLayer(rlayer, False)
+    
+                        # 3) (Optionnel) Debug : lister les sous-couches GDAL
+                        QgsMessageLog.logMessage(
+                            f"Sous-couches détectées pour {table_name}: {rlayer.dataProvider().subLayers()}",
+                            "Top'Eau", Qgis.Info
+                        )
+    
+                        # 4) Charger le QML et appliquer à la couche (pour être sûr que le style est valide)
+                        rlayer.loadNamedStyle(qml_file)
+                        rlayer.triggerRepaint()
+    
+                        # 5) Sauvegarder dans la table layer_styles du GPKG
+                        err = rlayer.saveStyleToDatabase(
+                            'default',          # nom du style
+                            'Style embarqué',   # description
+                            True,               # use as default
+                            None                # on passe None : QGIS reprendra le style en mémoire
+                        )
+                        if err:
+                            QgsMessageLog.logMessage(f"Erreur saveStyleToDatabase pour {table_name} : {err}", "Top'Eau", Qgis.Warning)
+                        else:
+                            QgsMessageLog.logMessage(f"Symbologie embarquée dans {table_name}", "Top'Eau", Qgis.Info)
+    
+                        # 6) Nettoyage : retirer la couche du projet (on n’en a plus besoin)
+                        proj.removeMapLayer(rlayer.id())
+    
+                    except Exception as e:
+                        QgsMessageLog.logMessage(f"Échec injection style QML : {e}", "Top'Eau", Qgis.Warning)
+    
                     return gpkg_path
                 else:
                     QMessageBox.warning(self, "Erreur", f"Le GeoPackage n'a pas été créé")
