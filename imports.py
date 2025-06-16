@@ -24,7 +24,6 @@ ui_path = os.path.dirname(os.path.abspath(__file__))
 ui_path = os.path.join(ui_path, "ui")
 form_traitement, _ = uic.loadUiType(os.path.join(ui_path, "import.ui"))
 
-
 # mise en place de la classe TraitementWidget
 # va regrouper l'ensemble des fonctions relatives aux traitements à réaliser
 class ImportWidget(QDialog, form_traitement):
@@ -50,45 +49,108 @@ class ImportWidget(QDialog, form_traitement):
         # Bouton "Effacer"
         self.erase.clicked.connect(self.effacer_donnees)
 
+        # association de filtres à la sélection de couches dans le projet QGIS
+        self.inputReleves_2.setFilters(
+            QgsMapLayerProxyModel.NoGeometry |
+            QgsMapLayerProxyModel.PluginLayer
+        )
+
+        # association de l'import de fichiers aux fonctions de désactivation des listes déroulantes
+        #self.inputGPKG.fileChanged.connect(self.maj_etat_inputGPKG2)
+        self.inputReleves.fileChanged.connect(self.maj_etat_inputReleves2)
+
     def reject(self):
         QDialog.reject(self)
         return
 
+    # fonctions permettant de désactiver les listes déroulantes des couches si un chemin est renseigné pour l'import de données
+
+    def maj_etat_inputReleves2(self, path):
+        path = path.strip()
+        if path != "":
+            self.inputReleves_2.setEnabled(False)
+        else:
+            self.inputReleves_2.setEnabled(True)
+
     # 1. fonction permettant de récupérer les données depuis le CSV et de les insérer dans le GPKG sélectionné
     def inserer_donnees(self):
 
-        # 1.1. récupération des chemins au moment du clic
+        # 1.1. récupération des chemins et variables au moment du clic
         selected_GPKG = self.inputGPKG.filePath()
+        nom_champ = self.nomChamp.text()
         selected_CSV = self.inputReleves.filePath()
 
         # 1.2. vérification que les fichiers sont sélectionnés
-        if not selected_GPKG or not selected_CSV:
-            QgsMessageLog.logMessage("Veuillez sélectionner les fichiers GPKG et CSV", "Top'Eau", Qgis.Warning)
+        if not selected_GPKG or selected_GPKG.strip() == "":
+            QMessageBox.warning(self, "Erreur", "Veuillez sélectionner un fichier GPKG.")
             return
 
-        # mise à jour de la barre de progression
-        self.progressBar.setValue(25)
+        if not os.path.exists(selected_GPKG):
+            QMessageBox.warning(self, "Erreur", f"Le fichier GPKG n'existe pas : {selected_GPKG}")
+            return
 
+        if not nom_champ or nom_champ.strip() == "":
+            QMessageBox.warning(self, "Erreur", "Veuillez renseigner le nom du champ niveau d'eau.")
+            return
+
+        # 1.3. Déterminer la source des données
+        use_layer = False
+        layer = None
+
+        # ...localement...
+        if not selected_CSV or selected_CSV.strip() == "":
+            # ...ou récupération de la couche sélectionnée depuis le projet
+            layer = self.inputReleves_2.currentLayer()
+            if layer is None or not isinstance(layer, QgsMapLayer):
+                QMessageBox.warning(self, "Erreur", "Veuillez sélectionner un fichier de relevés eau.")
+                return
+            use_layer = True
+
+        else:
+        # Vérifier que le fichier CSV existe
+            if not os.path.exists(selected_CSV):
+                QMessageBox.warning(self, "Erreur", f"Le fichier CSV n'existe pas : {selected_CSV}")
+                return
+
+                # Convertir la couche QGIS en DataFrame
         try:
-            # 1.3. lecture du CSV avec Pandas
-            df = pd.read_csv(selected_CSV)
+            # 1.4. Lecture des données selon la source
+            if use_layer:
+                features = []
+                for feature in layer.getFeatures():
+                    features.append(feature.attributes())
 
-            # 1.4. vérification de l'existence des colonnes
+            # Créer le DataFrame avec les noms des champs
+                field_names = [field.name() for field in layer.fields()]
+                df = pd.DataFrame(features, columns=field_names)
+
+                QgsMessageLog.logMessage(f"Données lues depuis la couche : {layer.name()}", "Top'Eau", Qgis.Info)
+
+            else:
+                # Lire depuis le fichier CSV
+                df = pd.read_csv(selected_CSV)
+                QgsMessageLog.logMessage(f"Données lues depuis le fichier : {selected_CSV}", "Top'Eau", Qgis.Info)
+
+            # Vérifier que le DataFrame n'est pas vide
+            if df.empty:
+                QgsMessageLog.logMessage("Les données sont vides", "Top'Eau", Qgis.Critical)
+                return False
+
+            # 1.5. vérification de l'existence des colonnes
             if 'Time' not in df.columns:
-                QgsMessageLog.logMessage("Colonne 'Time' non trouvée dans le CSV", "Top'Eau", Qgis.Critical)
+                QgsMessageLog.logMessage(f"Colonne 'Time' non trouvée. Colonnes disponibles : {list(df.columns)}", "Top'Eau", Qgis.Critical)
                 return False
 
-            if 'median_height_24h Physalita2' not in df.columns:
-                QgsMessageLog.logMessage("Colonne 'median_height_24h Physalita2' non trouvée dans le CSV", "Top'Eau",
-                                         Qgis.Critical)
+            if nom_champ not in df.columns:
+                QgsMessageLog.logMessage(f"Colonne '{nom_champ}' non trouvée. Colonnes disponibles : {list(df.columns)}", "Top'Eau", Qgis.Critical)
                 return False
 
-            # 1.5. récupération des données comprises dans le CSV via Pandas
+            # 1.6. récupération des données comprises dans le DataFrame
             time_data = df['Time']
-            niveau_data = df['median_height_24h Physalita2']
+            niveau_data = df[nom_champ]
 
             # mise à jour de la barre de progression
-            self.progressBar.setValue(50)
+            self.progressBar.setValue(25)
 
             # 1.6. connexion SQLite directe au GeoPackage
             conn = sqlite3.connect(selected_GPKG)
@@ -109,7 +171,8 @@ class ImportWidget(QDialog, form_traitement):
                     str(niveau_data.iloc[i])
                     if pd.notna(niveau_data.iloc[i])
                     else None
-                ))
+                )
+            )
 
             conn.commit()
             QgsMessageLog.logMessage(f"Table SQLite implémentée avec succès - {len(df)} lignes insérées", "Top'Eau",
