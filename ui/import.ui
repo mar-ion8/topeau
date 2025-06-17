@@ -642,16 +642,6 @@
     <string>Ou depuis le projet en cours :</string>
    </property>
   </widget>
-  <widget class="QgsMapLayerComboBox" name="inputReleves_2">
-   <property name="geometry">
-    <rect>
-     <x>280</x>
-     <y>340</y>
-     <width>160</width>
-     <height>21</height>
-    </rect>
-   </property>
-  </widget>
   <widget class="QPushButton" name="generer">
    <property name="geometry">
     <rect>
@@ -807,6 +797,16 @@
     <string>exemple : Time</string>
    </property>
   </widget>
+  <widget class="QgsMapLayerComboBox" name="inputReleves_2">
+   <property name="geometry">
+    <rect>
+     <x>280</x>
+     <y>340</y>
+     <width>160</width>
+     <height>21</height>
+    </rect>
+   </property>
+  </widget>
   <zorder>line</zorder>
   <zorder>terminer</zorder>
   <zorder>label</zorder>
@@ -817,7 +817,6 @@
   <zorder>inputReleves</zorder>
   <zorder>label_3</zorder>
   <zorder>label_13</zorder>
-  <zorder>inputReleves_2</zorder>
   <zorder>generer</zorder>
   <zorder>progressBar</zorder>
   <zorder>label_11</zorder>
@@ -827,6 +826,7 @@
   <zorder>nomChamp_2</zorder>
   <zorder>label_14</zorder>
   <zorder>label_15</zorder>
+  <zorder>inputReleves_2</zorder>
  </widget>
  <customwidgets>
   <customwidget>
