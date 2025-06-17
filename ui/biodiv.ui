@@ -532,9 +532,9 @@
   <widget class="QLabel" name="label_14">
    <property name="geometry">
     <rect>
-     <x>380</x>
-     <y>70</y>
-     <width>201</width>
+     <x>270</x>
+     <y>60</y>
+     <width>111</width>
      <height>51</height>
     </rect>
    </property>
@@ -548,7 +548,7 @@
     <string>Ou fichier vecteur ponctuel depuis le projet en cours :</string>
    </property>
    <property name="alignment">
-    <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+    <set>Qt::AlignCenter</set>
    </property>
    <property name="wordWrap">
     <bool>true</bool>
@@ -557,7 +557,7 @@
   <widget class="QgsMapLayerComboBox" name="inputPoints_2">
    <property name="geometry">
     <rect>
-     <x>420</x>
+     <x>240</x>
      <y>120</y>
      <width>160</width>
      <height>21</height>
@@ -568,9 +568,9 @@
    <property name="geometry">
     <rect>
      <x>20</x>
-     <y>70</y>
-     <width>301</width>
-     <height>51</height>
+     <y>60</y>
+     <width>201</width>
+     <height>71</height>
     </rect>
    </property>
    <property name="font">
@@ -580,7 +580,7 @@
     </font>
    </property>
    <property name="text">
-    <string>Fichier vecteur ponctuel qui concerne les relevés biodiversité</string>
+    <string>Fichier vecteur contenant les relevés biodiversité</string>
    </property>
    <property name="wordWrap">
     <bool>true</bool>
@@ -726,6 +726,41 @@
     <bool>true</bool>
    </property>
   </widget>
+  <widget class="QLineEdit" name="nomChamp">
+   <property name="geometry">
+    <rect>
+     <x>440</x>
+     <y>120</y>
+     <width>131</width>
+     <height>21</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label_15">
+   <property name="geometry">
+    <rect>
+     <x>460</x>
+     <y>60</y>
+     <width>101</width>
+     <height>51</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Tw Cen MT</family>
+     <pointsize>10</pointsize>
+    </font>
+   </property>
+   <property name="text">
+    <string>Nom du champ contenant la date :</string>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignCenter</set>
+   </property>
+   <property name="wordWrap">
+    <bool>true</bool>
+   </property>
+  </widget>
   <zorder>line</zorder>
   <zorder>terminer</zorder>
   <zorder>label</zorder>
@@ -741,6 +776,8 @@
   <zorder>label_10</zorder>
   <zorder>inputGPKG</zorder>
   <zorder>label_3</zorder>
+  <zorder>nomChamp</zorder>
+  <zorder>label_15</zorder>
  </widget>
  <customwidgets>
   <customwidget>
