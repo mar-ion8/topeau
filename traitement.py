@@ -558,15 +558,17 @@ class TraitementWidget(QDialog, form_traitement):
             geometry_wkt = None
             try:
                 if hasattr(self, 'selected_vecteur_path') and self.selected_vecteur_path is not None:
-                    # récupération de l'entité du vecteur sélectionné
-                    features = (self.selected_vecteur_path.getFeatures())
-                    if features:
-                        # récupération de la géométrie de l'entité
-                        geom = features[0].geometry()
+                    # récupération des entités du vecteur sélectionné
+                    features = self.selected_vecteur_path.getFeatures()
+
+                    for feature in features:
+                        # récupération de la géométrie de la première entité
+                        geom = feature.geometry()
                         if geom and not geom.isEmpty():
                             # passage de la géométrie récupérée en WKT pour être retranscrite et lue en table
                             geometry_wkt = geom.asWkt()
                             QgsMessageLog.logMessage(f"Géométrie récupérée pour l'emprise", "Top'Eau", Qgis.Info)
+                            break  # On s'arrête à la première géométrie valide
                         else:
                             QgsMessageLog.logMessage(f"Géométrie vide dans selected_vecteur", "Top'Eau", Qgis.Warning)
                     else:
@@ -744,7 +746,8 @@ class TraitementWidget(QDialog, form_traitement):
                     classe_4___hauteur_eau TEXT,
                     classe_5___hauteur_eau TEXT,
                     classe_6___hauteur_eau TEXT, 
-                    classe_7___hauteur_eau TEXT         
+                    classe_7___hauteur_eau TEXT,
+                    nom_fichier___hauteur_eau TEXT         
                 )
             ''')
             cursor.execute('''
@@ -766,9 +769,11 @@ class TraitementWidget(QDialog, form_traitement):
                     classe_4___hauteur_eau,
                     classe_5___hauteur_eau,
                     classe_6___hauteur_eau, 
-                    classe_7___hauteur_eau
-                ) 
+                    classe_7___hauteur_eau,
+                    nom_fichier___hauteur_eau
+                    ) 
                 VALUES (
+                    ?,
                     ?,
                     ?,
                     ?,
@@ -805,7 +810,8 @@ class TraitementWidget(QDialog, form_traitement):
                     'Surface couverte par un niveau d\'eau compris dans la classe 4 : 15 - 20 cm (en m²)',
                     'Surface couverte par un niveau d\'eau compris dans la classe 5 : 20 - 25 cm (en m²)',
                     'Surface couverte par un niveau d\'eau compris dans la classe 6 : 25 - 30 cm (en m²)',
-                    'Surface couverte par un niveau d\'eau compris dans la classe 7 : > 30 cm (en m²)'
+                    'Surface couverte par un niveau d\'eau compris dans la classe 7 : > 30 cm (en m²)',
+                    'Nom donné au raster lors de sa génération et son extension'
                 )
             )
 
@@ -888,30 +894,30 @@ class TraitementWidget(QDialog, form_traitement):
                 if os.path.exists(gpkg_path):
                     QgsMessageLog.logMessage(f"GeoPackage créé avec succès: {gpkg_path}", "Top'Eau", Qgis.Success)
     
-                    # --- INJECTION DE LA SYMBOLOGIE QML DANS LE GPKG ---
+                    # ajout d'un fichier de style
                     qml_file = os.path.join(os.path.dirname(__file__), 'style', 'symbo.qml')
                     try:
-                        # 1) Charger la couche raster depuis le GeoPackage
+                        # 1. chargement de la couche raster depuis le GeoPackage
                         uri = f"GPKG:{gpkg_path}:{table_name}"
                         rlayer = QgsRasterLayer(uri, table_name, 'gdal')
                         if not rlayer.isValid():
                             raise ValueError(f"Impossible de charger {uri} comme QgsRasterLayer")
     
-                        # 2) Enregistrer temporairement dans le projet (nécessaire pour saveStyleToDatabase)
+                        # 2. enregistrement temporairement dans le projet (nécessaire pour saveStyleToDatabase)
                         proj = QgsProject.instance()
                         proj.addMapLayer(rlayer, False)
     
-                        # 3) (Optionnel) Debug : lister les sous-couches GDAL
+                        # 3. liste des sous-couches GDAL
                         QgsMessageLog.logMessage(
                             f"Sous-couches détectées pour {table_name}: {rlayer.dataProvider().subLayers()}",
                             "Top'Eau", Qgis.Info
                         )
     
-                        # 4) Charger le QML et appliquer à la couche (pour être sûr que le style est valide)
+                        # 4. chargement du QML et application à la couche (pour être sûr que le style est valide)
                         rlayer.loadNamedStyle(qml_file)
                         rlayer.triggerRepaint()
     
-                        # 5) Sauvegarder dans la table layer_styles du GPKG
+                        # 5. sauvegarde dans la table layer_styles du GPKG
                         err = rlayer.saveStyleToDatabase(
                             'default',          # nom du style
                             'Style embarqué',   # description
@@ -923,7 +929,7 @@ class TraitementWidget(QDialog, form_traitement):
                         else:
                             QgsMessageLog.logMessage(f"Symbologie embarquée dans {table_name}", "Top'Eau", Qgis.Info)
     
-                        # 6) Nettoyage : retirer la couche du projet (on n’en a plus besoin)
+                        # 6. nettoyage : retirer la couche du projet (on n’en a plus besoin)
                         proj.removeMapLayer(rlayer.id())
     
                     except Exception as e:
@@ -961,7 +967,7 @@ class TraitementWidget(QDialog, form_traitement):
             # génération du nom du raster pour la table
             nom_ze = self.nomZE.text()
             niveau_cm = int(self.current_level * 100)
-            raster_name = f"{nom_ze}_{niveau_cm}cm_topeau.gpkg"
+            raster_name = f"{nom_ze}_{niveau_cm}cm_topeau.tif"
 
             # 3.7.1. connexion SQLite directe au GeoPackage
             conn = sqlite3.connect(gpkg_path)
