@@ -78,12 +78,8 @@ class TraitementWidget(QDialog, form_traitement):
             QgsMapLayerProxyModel.PluginLayer
         )
         self.inputVecteur_2.setFilters(
-            QgsMapLayerProxyModel.HasGeometry |
             QgsMapLayerProxyModel.VectorLayer |
-            QgsMapLayerProxyModel.PointLayer |
-            QgsMapLayerProxyModel.LineLayer |
-            QgsMapLayerProxyModel.PolygonLayer |
-            QgsMapLayerProxyModel.PluginLayer
+            QgsMapLayerProxyModel.PolygonLayer
         )
 
         # association de l'import de fichiers aux fonctions de désactivation des listes déroulantes
@@ -148,17 +144,29 @@ class TraitementWidget(QDialog, form_traitement):
                 return
             selected_vecteur = layer
 
+        # ajout de l'algorithme natif "Remplir les cellules sans données" pour harmoniser les valeurs NoData
+        # de n'importe quelle donnée raster en entrée
+        path_nodata = os.path.join(temp_path, "temp_layer_nodata.tif")
+
+        processing.run("native:fillnodata", {
+            'INPUT': selected_raster,
+            'BAND': 1,
+            'FILL_VALUE': -1,
+            'CREATE_OPTIONS': None,
+            'OUTPUT': path_nodata
+        })
+
         # création d'un fichier temporaire
         path_clip = os.path.join(temp_path, "temp_layer_clip.tif")
 
         # 1.3. ajout de l'algorithme gdal "Découper un raster selon une couche de masque"
         processing.run("gdal:cliprasterbymasklayer", {
-            'INPUT': selected_raster,  # appel à la variable récupérant le raster sélectionné
+            'INPUT': path_nodata,  # appel à la variable récupérant le raster dont les valeurs NoData ont été harmonisées
             'MASK': selected_vecteur,  # appel à la variable récupérant le vecteur sélectionné
             'SOURCE_CRS': None,
             'TARGET_CRS': QgsCoordinateReferenceSystem('EPSG:2154'), # pousser le SCR pour être sûr
             'TARGET_EXTENT': None,
-            'NODATA': None,
+            'NODATA': -9999,
             'ALPHA_BAND': False,  # indiquer 'True' si volonté de générer une bande de transparence
             'CROP_TO_CUTLINE': True,
             'KEEP_RESOLUTION': False,
@@ -172,6 +180,8 @@ class TraitementWidget(QDialog, form_traitement):
             'OUTPUT': path_clip
             # appel du fichier temporaire pour afficher le résultat dans l'interface graphique de QGIS
         })
+
+
         # chargement du raster découpé comme une nouvelle couche QGIS
         layer_clip = QgsRasterLayer(path_clip, f"parcelle_decoupee", "gdal")
         # s'assurer qu'il n'y a pas d'erreur
@@ -310,7 +320,7 @@ class TraitementWidget(QDialog, form_traitement):
         # mise à jour de la barre de progression à 100% à la fin de la génération des rasters
         self.progressBar.setValue(100)
 
-        # AJOUT : Chargement automatique du GPKG dans QGIS
+        # chargement automatique du GPKG dans QGIS
         self.charger_gpkg_dans_qgis(gpkg_path, couches_generees)
 
         # affichage du nombre de rasters générés
@@ -338,7 +348,7 @@ class TraitementWidget(QDialog, form_traitement):
             'SOURCE_CRS': None,
             'TARGET_CRS': QgsCoordinateReferenceSystem('EPSG:2154'), #permet de s'assurer que le raster découpé sera bien en 2154
             'TARGET_EXTENT': None,
-            'NODATA': None, #permet aux pixels à valeur nulle de ne pas être comptés dans l'emprise du raster
+            'NODATA': -9999, #permet aux pixels à valeur nulle de ne pas être comptés dans l'emprise du raster
             'ALPHA_BAND': False,
             'CROP_TO_CUTLINE': True,
             'KEEP_RESOLUTION': False,
@@ -393,7 +403,7 @@ class TraitementWidget(QDialog, form_traitement):
         processing.run("native:reclassifybytable", {
             'INPUT_RASTER': path_diff,
             'RASTER_BAND': 1,
-            'TABLE': ['-99', '0', 'nan'],  # remplacer les valeurs négatives par NaN
+            'TABLE': ['-9999', '0', 'nan'],  # remplacer les valeurs négatives par NaN
             'NO_DATA': -9999,
             'RANGE_BOUNDARIES': 0,
             'NODATA_FOR_MISSING': False,
@@ -409,25 +419,48 @@ class TraitementWidget(QDialog, form_traitement):
     # la fonction est répétée automatiquement autant de fois qu'il y a de niveaux d'eau à traiter puisqu'elle est traitée par la boucle
     def resample_raster(self, input_path, output_name):
 
-        # création d'un fichier final pour le raster rééchantillonné
-        path_resamp = os.path.join(temp_path, f"{output_name}_resamp.tif")
-
         # vérification de la validité du chemin d'entrée
         layer_reclass = QgsRasterLayer(input_path, "reclass_layer")
         if not layer_reclass.isValid():
             QMessageBox.warning(self, "Erreur", f"La couche à rééchantillonner n'est pas valide: {input_path}")
             return None
 
+        # ajustement : ajout découpage pour
+        path_reclip = os.path.join(temp_path, f"{output_name}_reclip.tif")
+        selected_vecteur = getattr(self, 'selected_vecteur_path', None)
+
+        processing.run("gdal:cliprasterbymasklayer", {
+            'INPUT': layer_reclass,
+            'MASK': selected_vecteur,
+            'SOURCE_CRS': QgsCoordinateReferenceSystem('EPSG:2154'),
+            'TARGET_CRS': QgsCoordinateReferenceSystem('EPSG:2154'),
+            'TARGET_EXTENT': None,
+            'NODATA': -9999,
+            'ALPHA_BAND': False,
+            'CROP_TO_CUTLINE': True,
+            'KEEP_RESOLUTION': False,
+            'SET_RESOLUTION': False,
+            'X_RESOLUTION': None,
+            'Y_RESOLUTION': None,
+            'MULTITHREADING': False,
+            'OPTIONS': None,
+            'DATA_TYPE': 0,
+            'EXTRA': '',
+            'OUTPUT': path_reclip})
+
+        # création d'un fichier final pour le raster rééchantillonné
+        path_resamp = os.path.join(temp_path, f"{output_name}_resamp.tif")
+
         # 3.7.1. utilisation de l'algorithme GRASS "r.resamp.Stats" pour le ré-échantillonnage
         processing.run("grass:r.resamp.stats", {
-            'input': layer_reclass,
+            'input': path_reclip,
             'method': 1,  # mediane
             'quantile': 0.5,
             '-n': True,
             '-w': False,
             'output': path_resamp,
             'GRASS_REGION_PARAMETER': None,
-            'GRASS_REGION_CELLSIZE_PARAMETER': 0.25,  # résolution de 25cm
+            'GRASS_REGION_CELLSIZE_PARAMETER': 1.00,  # résolution de 25cm
             'GRASS_RASTER_FORMAT_OPT': '',
             'GRASS_RASTER_FORMAT_META': ''
         })
