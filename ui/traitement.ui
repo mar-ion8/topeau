@@ -1081,6 +1081,57 @@
     </rect>
    </property>
   </widget>
+  <widget class="QDoubleSpinBox" name="inputResol">
+   <property name="geometry">
+    <rect>
+     <x>470</x>
+     <y>620</y>
+     <width>62</width>
+     <height>22</height>
+    </rect>
+   </property>
+   <property name="value">
+    <double>0.250000000000000</double>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label_15">
+   <property name="geometry">
+    <rect>
+     <x>540</x>
+     <y>620</y>
+     <width>91</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Tw Cen MT</family>
+     <pointsize>12</pointsize>
+    </font>
+   </property>
+   <property name="text">
+    <string>mètre(s)</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label_16">
+   <property name="geometry">
+    <rect>
+     <x>400</x>
+     <y>590</y>
+     <width>511</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Tw Cen MT</family>
+     <pointsize>14</pointsize>
+    </font>
+   </property>
+   <property name="text">
+    <string>Résolution du raster final</string>
+   </property>
+  </widget>
   <zorder>line</zorder>
   <zorder>terminer</zorder>
   <zorder>label</zorder>
@@ -1117,6 +1168,9 @@
   <zorder>label_13</zorder>
   <zorder>label_14</zorder>
   <zorder>inputVecteur_2</zorder>
+  <zorder>inputResol</zorder>
+  <zorder>label_15</zorder>
+  <zorder>label_16</zorder>
  </widget>
  <customwidgets>
   <customwidget>
