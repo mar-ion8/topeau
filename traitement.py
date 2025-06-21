@@ -144,7 +144,7 @@ class TraitementWidget(QDialog, form_traitement):
                 return
             selected_vecteur = layer
 
-        # ajout de l'algorithme natif "Remplir les cellules sans données" pour harmoniser les valeurs NoData
+        # 1.3. ajout de l'algorithme natif "Remplir les cellules sans données" pour harmoniser les valeurs NoData
         # de n'importe quelle donnée raster en entrée
         path_nodata = os.path.join(temp_path, "temp_layer_nodata.tif")
 
@@ -159,7 +159,7 @@ class TraitementWidget(QDialog, form_traitement):
         # création d'un fichier temporaire
         path_clip = os.path.join(temp_path, "temp_layer_clip.tif")
 
-        # 1.3. ajout de l'algorithme gdal "Découper un raster selon une couche de masque"
+        # 1.4. ajout de l'algorithme gdal "Découper un raster selon une couche de masque"
         processing.run("gdal:cliprasterbymasklayer", {
             'INPUT': path_nodata,  # appel à la variable récupérant le raster dont les valeurs NoData ont été harmonisées
             'MASK': selected_vecteur,  # appel à la variable récupérant le vecteur sélectionné
@@ -182,7 +182,7 @@ class TraitementWidget(QDialog, form_traitement):
         })
 
 
-        # chargement du raster découpé comme une nouvelle couche QGIS
+        # 1.5. chargement du raster découpé comme une nouvelle couche QGIS
         layer_clip = QgsRasterLayer(path_clip, f"parcelle_decoupee", "gdal")
         # s'assurer qu'il n'y a pas d'erreur
         if not layer_clip.isValid():
@@ -425,7 +425,11 @@ class TraitementWidget(QDialog, form_traitement):
             QMessageBox.warning(self, "Erreur", f"La couche à rééchantillonner n'est pas valide: {input_path}")
             return None
 
-        # ajustement : ajout découpage pour
+        '''
+        
+        # A VOIR SI SUPPRESSION
+        
+        # ajustement : ajout découpage pour éviter la création d'un contour rectangulaire aberrant lors de la création du raster
         path_reclip = os.path.join(temp_path, f"{output_name}_reclip.tif")
         selected_vecteur = getattr(self, 'selected_vecteur_path', None)
 
@@ -447,20 +451,29 @@ class TraitementWidget(QDialog, form_traitement):
             'DATA_TYPE': 0,
             'EXTRA': '',
             'OUTPUT': path_reclip})
+            
+        # NB : changer l'input de r.resamp.stats en "path_reclip" si conservation
+
+        '''
 
         # création d'un fichier final pour le raster rééchantillonné
         path_resamp = os.path.join(temp_path, f"{output_name}_resamp.tif")
 
+        # récupération de la valeur de résolution souhaitée par l'utilisateur
+        # NB : la résolution dépend du raster en entrée avant de dépendre du raster en sortie
+        # un raster ne peut pas être ré-échantillonné selon une valeur inférieure à celle de sa résolution de base
+        resolution = self.inputResol.value()
+
         # 3.7.1. utilisation de l'algorithme GRASS "r.resamp.Stats" pour le ré-échantillonnage
         processing.run("grass:r.resamp.stats", {
-            'input': path_reclip,
+            'input': layer_reclass,
             'method': 1,  # mediane
             'quantile': 0.5,
             '-n': True,
             '-w': False,
             'output': path_resamp,
             'GRASS_REGION_PARAMETER': None,
-            'GRASS_REGION_CELLSIZE_PARAMETER': 1.00,  # résolution de 25cm
+            'GRASS_REGION_CELLSIZE_PARAMETER': resolution,  # résolution de 25cm
             'GRASS_RASTER_FORMAT_OPT': '',
             'GRASS_RASTER_FORMAT_META': ''
         })
