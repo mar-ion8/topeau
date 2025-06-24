@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # Import module PyQt et API PyQGIS
+from qgis import core, gui
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5 import uic
@@ -602,6 +603,9 @@ class TraitementWidget(QDialog, form_traitement):
             # 4.2.2. récupération de la géométrie du polygone correspondant à la zone d'étude
             # instauration d'une variable qui servira pour la récupération de la géométrie en WKT
             geometry_wkt = None
+            surface_ze = 0.0
+            # configuration de QgsDistanceArea pour récupérer la surface du polygone d'entrée
+            da = QgsDistanceArea()
             try:
                 if hasattr(self, 'selected_vecteur_path') and self.selected_vecteur_path is not None:
                     # récupération des entités du vecteur sélectionné
@@ -610,9 +614,12 @@ class TraitementWidget(QDialog, form_traitement):
                     for feature in features:
                         # récupération de la géométrie de la première entité
                         geom = feature.geometry()
+                        # calcul de la surface de l’entité
+                        surface_cal = da.measureArea(geom)
                         if geom and not geom.isEmpty():
                             # passage de la géométrie récupérée en WKT pour être retranscrite et lue en table
                             geometry_wkt = geom.asWkt()
+                            surface_ze += surface_cal
                             QgsMessageLog.logMessage(f"Géométrie récupérée pour l'emprise", "Top'Eau", Qgis.Info)
                             break  # On s'arrête à la première géométrie valide
                         else:
@@ -636,6 +643,7 @@ class TraitementWidget(QDialog, form_traitement):
                     id INTEGER PRIMARY KEY AUTOINCREMENT, 
                     nom TEXT,
                     emprise GEOMETRY,
+                    surface_m2 REAL,
                     min_parcelle REAL,
                     max_parcelle REAL,
                     moyenne_parcelle REAL,
@@ -646,12 +654,14 @@ class TraitementWidget(QDialog, form_traitement):
                 INSERT INTO zone_etude(
                     nom,
                     emprise,
+                    surface_m2,
                     min_parcelle,
                     max_parcelle,
                     moyenne_parcelle,
                     mediane_parcelle) 
                 VALUES (
                     ?, 
+                    ?,
                     ?,
                     ?, 
                     ?, 
@@ -660,6 +670,7 @@ class TraitementWidget(QDialog, form_traitement):
                     )''', (
                 self.nomZE.text(),
                 geometry_wkt,
+                surface_ze,
                 round(self.valeur_min, 2),
                 round(self.valeur_max, 2),
                 round(self.valeur_moy, 2),
@@ -716,7 +727,8 @@ class TraitementWidget(QDialog, form_traitement):
                     langage TEXT,
                     relation TEXT,
                     extension_spatiale TEXT, 
-                    provenance TEXT           
+                    provenance TEXT,
+                    droits TEXT           
                     )
                 ''')
             cursor.execute('''
@@ -734,9 +746,11 @@ class TraitementWidget(QDialog, form_traitement):
                     langage,
                     relation,
                     extension_spatiale,
-                    provenance
+                    provenance,
+                    droits
                 ) 
                 VALUES (
+                    ?,
                     ?,
                     ?,
                     ?,
@@ -765,7 +779,8 @@ class TraitementWidget(QDialog, form_traitement):
                     'Français',
                     'Se référer à la notice d\'utilisation du Plugin disponible via la fenêtre \'Notice\' du Plugin Top\'Eau',
                     'Zone d\'étude située au sein d\'un des sites du Projet MAVI porté par l\'Unité Expérimentale INRAE de Saint-Laurent-de-la-Prée',
-                    'Résultat de l\'automatisation de traîtements effectués par le Plugin Top\'Eau'
+                    'Résultat de l\'automatisation de traîtements effectués par le Plugin Top\'Eau',
+                    'CC-BY-NC-ND'
                 )
             )
 
@@ -778,6 +793,7 @@ class TraitementWidget(QDialog, form_traitement):
                     date___mesure TEXT,            
                     niveau_eau___mesure TEXT,
                     nom___zone_etude TEXT,
+                    surface_m2___zone_etude TEXT,
                     min_parcelle___zone_etude TEXT,
                     max_parcelle___zone_etude TEXT,
                     moyenne_parcelle___zone_etude TEXT,
@@ -801,6 +817,7 @@ class TraitementWidget(QDialog, form_traitement):
                     date___mesure,            
                     niveau_eau___mesure,
                     nom___zone_etude,
+                    surface_m2___zone_etude,
                     min_parcelle___zone_etude,
                     max_parcelle___zone_etude,
                     moyenne_parcelle___zone_etude,
@@ -837,11 +854,13 @@ class TraitementWidget(QDialog, form_traitement):
                     ?,
                     ?,
                     ?,
+                    ?,
                     ?
                 )''', (
                     'Date relevée pour la mesure du niveau d\'eau dans la parcelle (bouée, piézomètre, relevé terrain)',
                     'Niveau relevé pour la mesure du niveau d\'eau dans la parcelle (bouée, piézomètre, relevé terrain)',
                     'Nom donné par l\'utilisateur pour la zone qu\'il étudie',
+                    'Surface du polygone correspondant à la zone d\'étude (en m²)',
                     'Point le plus bas de la parcelle (en mètre)',
                     'Point le plus haut de la parcelle (en mètre)',
                     'Elévation moyenne dans la parcelle (en mètre)',
