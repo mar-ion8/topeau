@@ -960,7 +960,7 @@ class TraitementWidget(QDialog, form_traitement):
                     QgsMessageLog.logMessage(f"GeoPackage créé avec succès: {gpkg_path}", "Top'Eau", Qgis.Success)
     
                     # ajout d'un fichier de style
-                    qml_file = os.path.join(os.path.dirname(__file__), 'style', 'symbo.qml')
+                    qml_file = os.path.join(os.path.dirname(__file__), 'style', 'style_topeau.qml')
                     try:
                         # 1. chargement de la couche raster depuis le GeoPackage
                         uri = f"GPKG:{gpkg_path}:{table_name}"
