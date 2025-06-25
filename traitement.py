@@ -295,7 +295,7 @@ class TraitementWidget(QDialog, form_traitement):
 
             # passage à l'étape suivante (ré-échantillonnage) si le calcul abien été effectué
             if raster_diff:
-                # appel du raster ré-échantillonné à 25x25 cm avec r.resamp.stats de GRASS (fonction resample_raster)
+                # appel du raster ré-échantillonné avec r.resamp.stats de GRASS (fonction resample_raster)
                 resampled_raster = self.resample_raster(raster_diff, output_name)
 
                 # ajout du raster à la liste des rasters s'il a bien été ré-échantillonné et boucle sur les fonctions nécessaires au formatage GPKG
@@ -304,6 +304,9 @@ class TraitementWidget(QDialog, form_traitement):
                     # conversion de chaque raster dans le GPKG unique
                     self.ajouter_raster_au_gpkg(resampled_raster, gpkg_path, output_name)
 
+                    # vectorisation de chaque raster pour que la géométrie soit récupérée lors de l'insertion des données dans les tables
+                    raster_vectorise = self.vectoriser_raster(resampled_raster, output_name)
+
                     # calcul des stats pour la table
                     surface_totale, _, volume_total, classe_1_surf, classe_2_surf, classe_3_surf, classe_4_surf, classe_5_surf, classe_6_surf, classe_7_surf = self.calculer_stats_raster(
                         resampled_raster)
@@ -311,7 +314,7 @@ class TraitementWidget(QDialog, form_traitement):
                     # alimentation de la table SQLite
                     self.ajouter_donnees_table_gpkg(gpkg_path, surface_totale, volume_total,
                                                     classe_1_surf, classe_2_surf, classe_3_surf, classe_4_surf,
-                                                    classe_5_surf, classe_6_surf, classe_7_surf)
+                                                    classe_5_surf, classe_6_surf, classe_7_surf, raster_vectorise)
 
                     couches_generees.append(f"{output_name} (dans {gpkg_path})")
 
@@ -481,13 +484,46 @@ class TraitementWidget(QDialog, form_traitement):
 
         # 3.7.2. calcul automatique de la surface après création du raster
         if os.path.exists(path_resamp):
-            surface_totale, _, volume_total, classe_1_surf, classe_2_surf, classe_3_surf, classe_4_surf, classe_5_surf, classe_6_surf, classe_7_surf = self.calculer_stats_raster(path_resamp)
+            (surface_totale, _, volume_total,
+             classe_1_surf, classe_2_surf, classe_3_surf, classe_4_surf,
+             classe_5_surf, classe_6_surf, classe_7_surf) = self.calculer_stats_raster(path_resamp)
 
         else:
             QgsMessageLog.logMessage(f"Le fichier raster {path_resamp} n'existe pas", "Top'Eau", Qgis.Warning)
             return None
 
         return path_resamp
+
+
+    # étape interne à la génération des rasters
+    # fonction permettant de vectoriser le raster généré afin d'en récupérer la géométrie
+    # la fonction est répétée automatiquement autant de fois qu'il y a de niveaux d'eau à traiter puisqu'elle est traitée par la boucle
+    def vectoriser_raster (self, path_resamp, output_name) :
+
+        try:
+
+            # récupération du raster ré-échantillonné
+            if path_resamp is None:
+                raise Exception(f"Impossible d'ouvrir le raster {path_resamp}")
+
+            # création d'un chemin temporaire pour le vecteur créé
+            raster_vectorise = os.path.join(temp_path, f"{output_name}_vecteur.gpkg")
+
+            # utilisation de l'algorithme GDAL "Polygoniser" pour passer le raster généré en vecteur
+            processing.run("gdal:polygonize", {
+                'INPUT': path_resamp,
+                'BAND': 1,
+                'FIELD': 'DN',
+                'EIGHT_CONNECTEDNESS': False,
+                'EXTRA': '',
+                'OUTPUT': raster_vectorise
+            })
+
+            return raster_vectorise
+
+        except Exception as e:
+            QgsMessageLog.logMessage(f"Erreur vectorisation du raster: {str(e)}", "Top'Eau", Qgis.Critical)
+            return None
 
 
     # étape interne à la génération des rasters
@@ -694,6 +730,7 @@ class TraitementWidget(QDialog, form_traitement):
                     classe_5 REAL,
                     classe_6 REAL,
                     classe_7 REAL,
+                    geom GEOMETRY,
                     nom_fichier TEXT
                 )
             ''')
@@ -1021,7 +1058,8 @@ class TraitementWidget(QDialog, form_traitement):
     # la fonction est répétée automatiquement autant de fois qu'il y a de niveaux d'eau à traiter puisqu'elle est traitée par la boucle
     def ajouter_donnees_table_gpkg(self,
                             gpkg_path, surface_totale, volume_total,
-                            classe_1_surf, classe_2_surf, classe_3_surf, classe_4_surf, classe_5_surf, classe_6_surf, classe_7_surf):
+                            classe_1_surf, classe_2_surf, classe_3_surf, classe_4_surf, classe_5_surf, classe_6_surf, classe_7_surf,
+                            raster_vectorise_path=None):
 
         try:
             # vérification de l'existence du GPKG
@@ -1033,6 +1071,50 @@ class TraitementWidget(QDialog, form_traitement):
             nom_ze = self.nomZE.text()
             niveau_cm = int(self.current_level * 100)
             raster_name = f"{nom_ze}_{niveau_cm}cm_topeau.tif"
+
+            # récupération de la géométrie du polygone correspondant à la surface inondée
+            # instauration d'une variable qui servira pour la récupération de la géométrie en WKT
+            geom_raster = None
+            try:
+                if raster_vectorise_path and os.path.exists(raster_vectorise_path):
+                    # charger la couche vecteur
+                    vector_layer = QgsVectorLayer(raster_vectorise_path, "temp_vector", "ogr")
+
+                    if vector_layer.isValid():
+                        # récupération des entités du vecteur
+                        features = vector_layer.getFeatures()
+
+                        # création d'une géométrie unifiée de toutes les entités
+                        all_geoms = []
+                        for feature in features:
+                            geom = feature.geometry()
+                            if geom and not geom.isEmpty():
+                                all_geoms.append(geom)
+
+                        if all_geoms:
+                            # fusion de toutes les géométries en une seule
+                            if len(all_geoms) == 1:
+                                unified_geom = all_geoms[0]
+                            else:
+                                unified_geom = QgsGeometry.unaryUnion(all_geoms)
+
+                            if unified_geom and not unified_geom.isEmpty():
+                                geom_raster = unified_geom.asWkt()
+                                QgsMessageLog.logMessage(f"Géométrie récupérée pour la surface inondée", "Top'Eau",
+                                                         Qgis.Info)
+                            else:
+                                QgsMessageLog.logMessage(f"Échec de l'union des géométries", "Top'Eau", Qgis.Warning)
+                        else:
+                            QgsMessageLog.logMessage(f"Aucune géométrie valide trouvée", "Top'Eau", Qgis.Warning)
+                    else:
+                        QgsMessageLog.logMessage(f"Couche vecteur invalide: {raster_vectorise_path}", "Top'Eau",
+                                                 Qgis.Warning)
+                else:
+                    QgsMessageLog.logMessage(f"Chemin du vecteur non fourni ou inexistant", "Top'Eau", Qgis.Warning)
+
+            except Exception as geom_error:
+                QgsMessageLog.logMessage(f"Erreur lors de la récupération de la géométrie : {str(geom_error)}",
+                                         "Top'Eau", Qgis.Warning)
 
             # 3.7.1. connexion SQLite directe au GeoPackage
             conn = sqlite3.connect(gpkg_path)
@@ -1052,11 +1134,13 @@ class TraitementWidget(QDialog, form_traitement):
                    classe_5,
                    classe_6,
                    classe_7,
+                   geom,
                    nom_fichier) 
                    VALUES 
                    (?, 
                    ?, 
                    ?, 
+                   ?,
                    ?,
                    ?,
                    ?,
@@ -1078,6 +1162,7 @@ class TraitementWidget(QDialog, form_traitement):
                 round(classe_5_surf, 2),
                 round(classe_6_surf, 2),
                 round(classe_7_surf, 2),
+                geom_raster,
                 raster_name
             ))
 
