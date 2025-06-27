@@ -16,6 +16,8 @@ import sqlite3
 # import librairie lecture CSV
 import pandas as pd
 
+from datetime import datetime, timedelta
+
 # appel emplacement des fichiers de stockage des sorties temporaires -- temp
 temp_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "temp")
 
@@ -56,9 +58,29 @@ class BiodivWidget(QDialog, form_traitement):
         # association de l'import de fichiers aux fonctions de désactivation des listes déroulantes
         self.inputPoints.fileChanged.connect(self.maj_etat_inputPoints_2)
 
+        # Connecter le changement d'état des boutons radio
+        self.radioChoix.toggled.connect(self.toggle_mode_date)
+        self.radioVecteur.toggled.connect(self.toggle_mode_date)
+
+        # Appeler une première fois pour initialiser correctement
+        self.toggle_mode_date()
+
     def reject(self):
         QDialog.reject(self)
         return
+
+    # fonction permettant de désactiver les options non utilsiées par l'utilisateur
+    def toggle_mode_date(self):
+        is_manual = self.radioChoix.isChecked()
+
+        # activation des widgets de saisie de date uniquement si "Ou plage étudiée" est coché
+        self.dateDebut.setEnabled(is_manual)
+        self.dateFin.setEnabled(is_manual)
+
+        # activation des widgets d'input de vecteur (local ou liste déroulante) uniquement si "FIchier vecteur [...] biodiversité" est coché
+        self.inputPoints.setEnabled(not is_manual)
+        self.inputPoints_2.setEnabled(not is_manual)
+        self.nomChamp.setEnabled(not is_manual)
 
     # fonction permettant de désactiver les listes déroulantes des couches si un chemin est renseigné pour l'import de données
     def maj_etat_inputPoints_2(self, path):
@@ -68,100 +90,130 @@ class BiodivWidget(QDialog, form_traitement):
         else:
             self.inputPoints_2.setEnabled(True)
 
+
     # 1. fonction permettant la récupération du raster depuis le GPKG à partir de la/des date/s fournie/s par l'utilisateur
     def recup_raster(self):
 
         # 1.1. chargement de la date sélectionnée par l'utilisateur dans une variable
-        selected_points = self.inputPoints.lineEdit().text()
+        # la date peut être : contenue dans un fichier de point ou comprise dans une plage de dates sélectionnée par l'utilisateur
 
-        # vérification de la sélection d'un fichier en fonction du choix de l'utilisateur...
-        # ...localement...
-        if not selected_points or selected_points.strip() == "":
-            # récupération de la couche sélectionnée depuis le projet
-            layer = self.inputPoints_2.currentLayer()
-            if layer is None or not isinstance(layer, QgsVectorLayer):
-                QMessageBox.warning(self, "Erreur", "Veuillez sélectionner un fichier de points ou une couche.")
-                return None
-            selected_points = layer
-            use_layer = True
-        else:
-            # vérification de l'existence du projet
-            if not os.path.exists(selected_points):
-                QMessageBox.warning(self, "Erreur", f"Le fichier n'existe pas : {selected_points}")
-                return None
-            use_layer = False
+        # si l'utilisateur coche "Ou plage étudiée"...
+        if self.radioChoix.isChecked() :
 
-        # 1.2. récupération du nom du champ contenant la date & vérification de sa validité
-        field_name = self.nomChamp.text()
-        if not field_name or field_name.strip() == "":
-            QMessageBox.warning(self, "Erreur", "Veuillez renseigner le nom du champ.")
-            return None
+            # récupération des dates depuis les QDateEdit
+            start_qdate = self.dateDebut.date()
+            end_qdate = self.dateFin.date()
 
-        try:
-            # 1.3. chargement de la couche selon la source (local ou projet)
-            if use_layer:
-                layer = selected_points
+            # ...conversion des dates récupérées en dates réelles...
+            start_date = datetime(start_qdate.year(), start_qdate.month(), start_qdate.day()).date()
+            end_date = datetime(end_qdate.year(), end_qdate.month(), end_qdate.day()).date()
+
+            # ...vérification de l'ordre chronologique (erreur si la date de fin est avant la date de début)...
+            if start_date > end_date:
+                start_date, end_date = end_date, start_date
+
+            # ...construction de la liste complète des dates dans l'intervalle...
+            date_range = []
+            current_date = start_date
+            while current_date <= end_date:
+                date_range.append(current_date)
+                current_date += timedelta(days=1)
+
+            # ...récupération des dates récupérées dans l'intervalle sous la variable values qui est convertie en ISO
+            # avant d'être récupérée dans les requêtes SQL effectuées sur la table mesure
+            values = date_range
+
+        # si l'utilisateur coche "Fichier vecteur [...] biodiversité" ...
+        else :
+
+            selected_points = self.inputPoints.lineEdit().text()
+            # vérification de la sélection d'un fichier en fonction du choix de l'utilisateur...
+            # ...localement...
+            if not selected_points or selected_points.strip() == "":
+                # récupération de la couche sélectionnée depuis le projet
+                layer = self.inputPoints_2.currentLayer()
+                if layer is None or not isinstance(layer, QgsVectorLayer):
+                    QMessageBox.warning(self, "Erreur", "Veuillez sélectionner un fichier de points ou une couche.")
+                    return None
+                selected_points = layer
+                use_layer = True
             else:
-                layer = QgsVectorLayer(selected_points, "temp_layer", "ogr")
+                # vérification de l'existence du projet
+                if not os.path.exists(selected_points):
+                    QMessageBox.warning(self, "Erreur", f"Le fichier n'existe pas : {selected_points}")
+                    return None
+                use_layer = False
 
-            # vérification de la validité de la couche
-            if not layer.isValid():
-                QgsMessageLog.logMessage("Erreur: La couche n'est pas valide", "Top'Eau", Qgis.Critical)
-                QMessageBox.critical(self, "Erreur", "La couche de points n'est pas valide")
+            # ...récupération du nom du champ contenant la date & vérification de sa validité...
+            field_name = self.nomChamp.text()
+            if not field_name or field_name.strip() == "":
+                QMessageBox.warning(self, "Erreur", "Veuillez renseigner le nom du champ.")
                 return None
 
-            # vérification de l'existence du champ
-            field_names = [field.name() for field in layer.fields()]
-            if field_name not in field_names:
-                error_msg = f"Le champ '{field_name}' n'existe pas.\nChamps disponibles: {', '.join(field_names)}"
+            try:
+                # ...chargement de la couche selon la source (local ou projet)...
+                if use_layer:
+                    layer = selected_points
+                else:
+                    layer = QgsVectorLayer(selected_points, "temp_layer", "ogr")
+
+                # ...vérification de la validité de la couche...
+                if not layer.isValid():
+                    QgsMessageLog.logMessage("Erreur: La couche n'est pas valide", "Top'Eau", Qgis.Critical)
+                    QMessageBox.critical(self, "Erreur", "La couche de points n'est pas valide")
+                    return None
+
+                # ...vérification de l'existence du champ...
+                field_names = [field.name() for field in layer.fields()]
+                if field_name not in field_names:
+                    error_msg = f"Le champ '{field_name}' n'existe pas.\nChamps disponibles: {', '.join(field_names)}"
+                    QgsMessageLog.logMessage(error_msg, "Top'Eau", Qgis.Critical)
+                    QMessageBox.critical(self, "Erreur", error_msg)
+                    return None
+
+                # ...extraction des valeurs
+                values = []
+                valid_features = 0
+
+                for feature in layer.getFeatures():
+                    # vérification de la validité de la géométrie
+                    if feature.hasGeometry() and not feature.geometry().isEmpty():
+                        value = feature[field_name]
+                        if value is not None:  # ignorer les valeurs nulles
+                            values.append(value)
+                            valid_features += 1
+                # message d'erreur si le champ n'est pas valide (pas de donnée, pas de format valide de date...)
+                if len(values) == 0:
+                    QgsMessageLog.logMessage(f"Aucune valeur valide trouvée dans le champ '{field_name}'", "Top'Eau",
+                                             Qgis.Warning)
+                    QMessageBox.warning(self, "Attention", f"Aucune valeur valide trouvée dans le champ '{field_name}'")
+                    return None
+
+                QgsMessageLog.logMessage(f"Succès", "Top\'Eau", Qgis.Success)
+                QMessageBox.information(self, "Succès", f"Extraction terminée:\n- {len(values)} valeur(s) extraite(s)")
+
+                # message indiquant les valeurs relevées pour vérification de l'extraction
+                # QMessageBox.information(self, "Succès", f"Extraction terminée:\n- {values}")
+
+            except Exception as e:
+                error_msg = f"Erreur lors de l'extraction: {str(e)}"
                 QgsMessageLog.logMessage(error_msg, "Top'Eau", Qgis.Critical)
                 QMessageBox.critical(self, "Erreur", error_msg)
                 return None
 
-            # 1.4. extraction des valeurs
-            values = []
-            valid_features = 0
-
-            for feature in layer.getFeatures():
-                # vérification de la validité de la géométrie
-                if feature.hasGeometry() and not feature.geometry().isEmpty():
-                    value = feature[field_name]
-                    if value is not None:  # ignorer les valeurs nulles
-                        values.append(value)
-                        valid_features += 1
-            # message d'erreur si le champ n'est pas valide (pas de donnée, pas de format valide de date...)
-            if len(values) == 0:
-                QgsMessageLog.logMessage(f"Aucune valeur valide trouvée dans le champ '{field_name}'", "Top'Eau",
-                                         Qgis.Warning)
-                QMessageBox.warning(self, "Attention", f"Aucune valeur valide trouvée dans le champ '{field_name}'")
-                return None
-
-            QgsMessageLog.logMessage(f"Succès", "Top\'Eau", Qgis.Success)
-            QMessageBox.information(self, "Succès", f"Extraction terminée:\n- {len(values)} valeur(s) extraite(s)")
-            # message indiquant les valeurs relevées pour vérification de l'extraction
-            # QMessageBox.information(self, "Succès", f"Extraction terminée:\n- {values}")
-
-            #return values
-
-        except Exception as e:
-            error_msg = f"Erreur lors de l'extraction: {str(e)}"
-            QgsMessageLog.logMessage(error_msg, "Top'Eau", Qgis.Critical)
-            QMessageBox.critical(self, "Erreur", error_msg)
-            return None
-
         # mise à jour de la barre de progression
-        #self.progressBar.setValue(25)
+        self.progressBar.setValue(25)
 
         try :
 
-            # 1.5. récupération du GPKG saisi par l'utilisateur
+            # 1.2. récupération du GPKG saisi par l'utilisateur
             selected_GPKG = self.inputGPKG.filePath()
 
             if not selected_GPKG or not os.path.exists(selected_GPKG):
                 QMessageBox.warning(self, "Erreur", "Veuillez sélectionner un fichier GPKG valide.")
                 return None
 
-            # 1.6. connexion SQLite directe au GeoPackage
+            # 1.3. connexion SQLite directe au GeoPackage
             conn = sqlite3.connect(selected_GPKG)
             cursor = conn.cursor()
 
@@ -169,7 +221,7 @@ class BiodivWidget(QDialog, form_traitement):
             sample_dates = cursor.fetchall()
             print(f"Exemples de dates dans le GPKG: {sample_dates}")
 
-            # 1.7. lecture ligne par ligne des données de la table mesure et requêtage sur les valeurs concernées
+            # 1.4. lecture ligne par ligne des données de la table mesure et requêtage sur les valeurs concernées
             all_occurrences = []
             for value in values:
                 date_str = self.convert_to_iso_date(value)
@@ -200,7 +252,8 @@ class BiodivWidget(QDialog, form_traitement):
 
             conn.close()
 
-            QgsMessageLog.logMessage(f"{len(all_occurrences)} date(s) récupérée(s) au sein de la table mesure", "Top'Eau", Qgis.Success)
+            QgsMessageLog.logMessage(f"{len(all_occurrences)} valeur(s) correspondante(s) entre le vecteur et la table mesure",
+                                     "Top'Eau", Qgis.Success)
 
         except Exception as e:
             if 'conn' in locals():
@@ -210,7 +263,6 @@ class BiodivWidget(QDialog, form_traitement):
             QMessageBox.critical(self, "Erreur", error_msg)
             return None
 
-        #date = self.dateDebut.date().toPyDate()
 
     # fonction permettant de convertir n'importe quel format de date vers le format de date "yyyy-mm-dd" du GPKG
     def convert_to_iso_date(self, value):
