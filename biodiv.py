@@ -59,17 +59,30 @@ class BiodivWidget(QDialog, form_traitement):
         self.inputPoints.fileChanged.connect(self.maj_etat_inputPoints_2)
 
         # Connecter le changement d'état des boutons radio
-        self.radioChoix.toggled.connect(self.toggle_mode_date)
-        self.radioVecteur.toggled.connect(self.toggle_mode_date)
+        self.radioChoix.toggled.connect(self.on_radio_toggled)
+        self.radioVecteur.toggled.connect(self.on_radio_toggled)
+        #self.radioChoix.toggled.connect(self.toggle_mode_date)
+        #self.radioVecteur.toggled.connect(self.toggle_mode_date)
 
         # Appeler une première fois pour initialiser correctement
-        self.toggle_mode_date()
+        #self.toggle_mode_date()
 
     def reject(self):
         QDialog.reject(self)
         return
 
+    def on_radio_toggled(self):
+        if self.radioChoix.isChecked() :
+            print("Radio cochée")
+        else:
+            print("Radio décochée")
+        if self.radioVecteur.isChecked() :
+            print("Radio cochée")
+        else:
+            print("Radio décochée")
+
     # fonction permettant de désactiver les options non utilsiées par l'utilisateur
+    '''
     def toggle_mode_date(self):
         is_manual = self.radioChoix.isChecked()
 
@@ -81,6 +94,7 @@ class BiodivWidget(QDialog, form_traitement):
         self.inputPoints.setEnabled(not is_manual)
         self.inputPoints_2.setEnabled(not is_manual)
         self.nomChamp.setEnabled(not is_manual)
+    '''
 
     # fonction permettant de désactiver les listes déroulantes des couches si un chemin est renseigné pour l'import de données
     def maj_etat_inputPoints_2(self, path):
@@ -222,16 +236,22 @@ class BiodivWidget(QDialog, form_traitement):
             print(f"Exemples de dates dans le GPKG: {sample_dates}")
 
             # 1.4. lecture ligne par ligne des données de la table mesure et requêtage sur les valeurs concernées
+
+            # instanciation de variables en tuple pour leur permettre de récupérer une lsite de plusieurs variables
             all_occurrences = []
+            valeurs_corr = []
+
+            # boucle sur chacune des dates récupérées en amont pour savoir...
+            # 1. si elles correspondent à des dates stockées dans la table "mesure" du GPKG
             for value in values:
                 date_str = self.convert_to_iso_date(value)
-                print(f"Date convertie: {date_str}")
+                #print(f"Date convertie: {date_str}")
 
                 # requêtes SQL tentées pour récupérer les valeurs similaires
                 queries = [
-                    f"SELECT * FROM mesure WHERE DATE(date) = '{date_str}'",
-                    f"SELECT * FROM mesure WHERE SUBSTR(date, 1, 10) = '{date_str}'",
-                    f"SELECT * FROM mesure WHERE date LIKE '{date_str}%'"
+                    f"SELECT *, niveau_eau FROM mesure WHERE DATE(date) = '{date_str}'",
+                    f"SELECT *, niveau_eau FROM mesure WHERE SUBSTR(date, 1, 10) = '{date_str}'",
+                    f"SELECT *, niveau_eau FROM mesure WHERE date LIKE '{date_str}%'"
                 ]
 
                 found = False
@@ -242,13 +262,20 @@ class BiodivWidget(QDialog, form_traitement):
                         if occurrences:
                             print(f"  -> Trouvé {len(occurrences)} résultats avec la requête {i + 1}")
                             all_occurrences.extend(occurrences)
+
+                            # 2. quel niveau d'eau relevé sur le terrain est associé à cette date
+                            for occurrence in occurrences: # boucle sur les dates qui correspondent
+                                niveau_eau = occurrence[-1]  # on récupère ici uniquement le résultat du dernier champ sélectionné en SQL (niveau_eau)
+                                if niveau_eau is not None:
+                                    valeurs_corr.append(niveau_eau)
+                                    print(niveau_eau)
+                                else :
+                                    QMessageBox.warning(self, "Erreur", "Il n'y a pas de niveau d'eau pour la/les date/s sélectionnée/s")
                             found = True
                             break
                     except Exception as e:
-                        print(f"  -> Erreur avec la requête {i + 1}: {e}")
-
-                if not found:
-                    print(f"  -> Aucun résultat trouvé pour '{date_str}'")
+                        QMessageBox.warning(self, "Erreur",
+                                                f"Erreur avec la requête {i + 1}: {e}")
 
             conn.close()
 
@@ -256,11 +283,7 @@ class BiodivWidget(QDialog, form_traitement):
                                      "Top'Eau", Qgis.Success)
 
         except Exception as e:
-            if 'conn' in locals():
-                conn.close()
-            error_msg = f"Erreur lors de la lecture du GPKG: {str(e)}"
-            QgsMessageLog.logMessage(error_msg, "Top'Eau", Qgis.Critical)
-            QMessageBox.critical(self, "Erreur", error_msg)
+            QgsMessageLog.logMessage(f"Erreur lors de la lecture du GPKG: {str(e)}" , "Top'Eau", Qgis.Critical)
             return None
 
 
