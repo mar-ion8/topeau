@@ -7,6 +7,7 @@ from PyQt5 import uic
 from PyQt5.QtGui import *
 from qgis.core import *
 from qgis.core import Qgis, QgsMessageLog
+from qgis.utils import iface
 from qgis import processing
 import os
 
@@ -137,7 +138,7 @@ class BiodivWidget(QDialog, form_traitement):
             # avant d'être récupérée dans les requêtes SQL effectuées sur la table mesure
             values = date_range
 
-        # si l'utilisateur coche "Fichier vecteur [...] biodiversité" ...
+        # si l'utilisateur coche "...la date des [...] biodiversité" ...
         else :
 
             selected_points = self.inputPoints.lineEdit().text()
@@ -264,15 +265,46 @@ class BiodivWidget(QDialog, form_traitement):
                             all_occurrences.extend(occurrences)
 
                             # 2. quel niveau d'eau relevé sur le terrain est associé à cette date
+                            niveau_eau_cm = None
                             for occurrence in occurrences: # boucle sur les dates qui correspondent
                                 niveau_eau = occurrence[-1]  # on récupère ici uniquement le résultat du dernier champ sélectionné en SQL (niveau_eau)
                                 if niveau_eau is not None:
                                     valeurs_corr.append(niveau_eau)
                                     print(niveau_eau)
+                                    niveau_eau_cm = niveau_eau * 100 # passage en cm pour effectuer le requêtage sur les noms de rasters
                                 else :
                                     QMessageBox.warning(self, "Erreur", "Il n'y a pas de niveau d'eau pour la/les date/s sélectionnée/s")
+
                             found = True
+
+                            # requête pour récupérer les tables raster du GPKG
+                            cursor.execute(f"""
+                                           SELECT table_name 
+                                           FROM gpkg_contents 
+                                           WHERE data_type = 'tiles' OR data_type = '2d-gridded-coverage'
+                                       """)
+
+                            results = cursor.fetchall()
+                            rasters = [row[0] for row in results]
+
+                            for raster_name in rasters:
+                                # intégration de la valeur du niveau d'eau, passée en cm, en string pour requêter les noms de fichier
+                                if str(int(niveau_eau_cm)) in raster_name:
+                                    uri = f"GPKG:{selected_GPKG}:{raster_name}"
+                                    try:
+                                        # création d'un URI pour les rasters du GPKG
+                                        uri = f"Raster récupéré:{selected_GPKG}:{raster_name}"
+
+                                        # création de la couche raster
+                                        layer = QgsRasterLayer(uri, raster_name, "gdal")
+
+                                    except Exception as e:
+                                        QgsMessageLog.logMessage(
+                                            f"Erreur lors du chargement du raster {raster_name}: {str(e)}", "Top'Eau",
+                                            Qgis.Warning)
+
                             break
+
                     except Exception as e:
                         QMessageBox.warning(self, "Erreur",
                                                 f"Erreur avec la requête {i + 1}: {e}")
@@ -287,7 +319,7 @@ class BiodivWidget(QDialog, form_traitement):
             return None
 
 
-    # fonction permettant de convertir n'importe quel format de date vers le format de date "yyyy-mm-dd" du GPKG
+    # fonction permettant de convertir n'importe quel format de date vers le format de date "yyyy-mm-dd %" du GPKG
     def convert_to_iso_date(self, value):
 
         # import des librairies concernées
