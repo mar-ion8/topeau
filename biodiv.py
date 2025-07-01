@@ -235,6 +235,8 @@ class BiodivWidget(QDialog, form_traitement):
             conn = sqlite3.connect(selected_GPKG)
             cursor = conn.cursor()
 
+            " A SUPPRIMIER UNE FOIS LE PLUGIN ACHEVE "
+
             cursor.execute('SELECT date FROM mesure LIMIT 5')
             sample_dates = cursor.fetchall()
             print(f"Exemples de dates dans le GPKG: {sample_dates}")
@@ -244,12 +246,13 @@ class BiodivWidget(QDialog, form_traitement):
             # instanciation de variables en tuple pour leur permettre de récupérer une lsite de plusieurs variables
             all_occurrences = []
             valeurs_corr = []
+            raster_layers = []
 
             # boucle sur chacune des dates récupérées en amont pour savoir...
             # 1. si elles correspondent à des dates stockées dans la table "mesure" du GPKG
             for value in values:
                 date_str = self.convert_to_iso_date(value)
-                #print(f"Date convertie: {date_str}")
+                print(f"Date convertie: {date_str}")
 
                 # requêtes SQL tentées pour récupérer les valeurs similaires
                 queries = [
@@ -273,13 +276,33 @@ class BiodivWidget(QDialog, form_traitement):
                                 niveau_eau = occurrence[-1]  # on récupère ici uniquement le résultat du dernier champ sélectionné en SQL (niveau_eau)
                                 if niveau_eau is not None:
                                     valeurs_corr.append(niveau_eau)
-                                    print(niveau_eau)
-                                    niveau_eau_cm = int(niveau_eau * 100) # passage en cm pour effectuer le requêtage sur les noms de rasters
-                                    print(niveau_eau_cm)
-                                else :
-                                    QMessageBox.warning(self, "Erreur", "Il n'y a pas de niveau d'eau pour la/les date/s sélectionnée/s")
+                                    print("Valeur brute récupérée :", niveau_eau)
+                                    print("Type de la valeur :", type(niveau_eau))
 
-                            found = True
+                                    try:
+                                        # tentative de conversion directe (lorsque le type de donnée est numérique)
+                                        niveau_eau_float = float(niveau_eau)
+                                        niveau_eau_cm = int(niveau_eau_float * 100)
+                                        print("Conversion directe réussie - Niveau d'eau en cm :", niveau_eau_cm)
+
+                                    except (ValueError, TypeError):
+                                        # traitement si la donnée est en format chaîne de caractères
+                                        try:
+                                            niveau_eau_corrige = float(str(niveau_eau)[:-2].replace(",", "."))
+                                            print("Niveau d'eau récupéré depuis le GPKG :", niveau_eau_corrige)
+                                            niveau_eau_cm = int(niveau_eau_corrige * 100)
+                                            print("Niveau d'eau en cm :", niveau_eau_cm)
+                                        except Exception as e:
+                                            print(f"Erreur lors du traitement alternatif : {e}")
+                                            QMessageBox.warning(self, "Erreur",
+                                                                f"Impossible de convertir la valeur : {niveau_eau}")
+                                            continue
+
+                                    else:
+                                        QMessageBox.warning(self, "Erreur",
+                                                            "Il n'y a pas de niveau d'eau pour la/les date/s sélectionnée/s")
+
+                                    found = True
 
                             # requête pour récupérer les tables raster du GPKG
                             cursor.execute(f"""
@@ -291,13 +314,12 @@ class BiodivWidget(QDialog, form_traitement):
                             results = cursor.fetchall()
                             rasters = [row[0] for row in results]
 
-                            raster_layers = []
-
                             for raster_name in rasters:
 
                                 # intégration de la valeur du niveau d'eau, passée en cm, en string pour requêter les noms de fichier
                                 if str(int(niveau_eau_cm)) in raster_name:
                                     uri = f"GPKG:{selected_GPKG}:{raster_name}"
+                                    print(uri)
                                     try:
 
                                         # création de la couche raster
@@ -318,10 +340,8 @@ class BiodivWidget(QDialog, form_traitement):
                             break
 
                     except Exception as e:
-                        QMessageBox.warning(self, "Erreur",
-                                                f"Erreur avec la requête {i + 1}: {e}")
-
-
+                        QgsMessageLog.logMessage(f"Erreur avec la requête {i + 1}: {e}", "Top'Eau",
+                                               Qgis.Warning)
 
             conn.close()
 
@@ -442,6 +462,8 @@ class BiodivWidget(QDialog, form_traitement):
             QgsMessageLog.logMessage(error_msg, "Top'Eau", Qgis.Critical)
             QMessageBox.critical(self, "Erreur", error_msg)
             return None
+
+
 
     # fonction permettant de convertir n'importe quel format de date vers le format de date "yyyy-mm-dd %" du GPKG
     def convert_to_iso_date(self, value):
