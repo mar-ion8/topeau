@@ -84,6 +84,9 @@ class BiodivWidget(QDialog, form_traitement):
 
     # fonction permettant de désactiver les options non utilsiées par l'utilisateur
     '''
+    
+    A ADAPTER POUR QUE CA NE FONCTIONNE QU'AVEC LES OPTIONS DE DATE
+    
     def toggle_mode_date(self):
         is_manual = self.radioChoix.isChecked()
 
@@ -261,7 +264,7 @@ class BiodivWidget(QDialog, form_traitement):
                         cursor.execute(query)
                         occurrences = cursor.fetchall()
                         if occurrences:
-                            print(f"  -> Trouvé {len(occurrences)} résultats avec la requête {i + 1}")
+                            print(f"  -> Trouvé {len(occurrences)} résultats lors de la requête")
                             all_occurrences.extend(occurrences)
 
                             # 2. quel niveau d'eau relevé sur le terrain est associé à cette date
@@ -271,7 +274,8 @@ class BiodivWidget(QDialog, form_traitement):
                                 if niveau_eau is not None:
                                     valeurs_corr.append(niveau_eau)
                                     print(niveau_eau)
-                                    niveau_eau_cm = niveau_eau * 100 # passage en cm pour effectuer le requêtage sur les noms de rasters
+                                    niveau_eau_cm = int(niveau_eau * 100) # passage en cm pour effectuer le requêtage sur les noms de rasters
+                                    print(niveau_eau_cm)
                                 else :
                                     QMessageBox.warning(self, "Erreur", "Il n'y a pas de niveau d'eau pour la/les date/s sélectionnée/s")
 
@@ -287,37 +291,157 @@ class BiodivWidget(QDialog, form_traitement):
                             results = cursor.fetchall()
                             rasters = [row[0] for row in results]
 
+                            raster_layers = []
+
                             for raster_name in rasters:
+
                                 # intégration de la valeur du niveau d'eau, passée en cm, en string pour requêter les noms de fichier
                                 if str(int(niveau_eau_cm)) in raster_name:
                                     uri = f"GPKG:{selected_GPKG}:{raster_name}"
                                     try:
-                                        # création d'un URI pour les rasters du GPKG
-                                        uri = f"Raster récupéré:{selected_GPKG}:{raster_name}"
 
                                         # création de la couche raster
-                                        layer = QgsRasterLayer(uri, raster_name, "gdal")
+                                        layer_niveau_eau = QgsRasterLayer(uri, raster_name, "gdal")
+
+                                        if layer_niveau_eau.isValid():
+                                            raster_layers.append(layer_niveau_eau)
+                                            print(f"Raster chargé avec succès: {raster_name}")
+                                        else:
+                                            print(f"Erreur: Le raster {raster_name} n'est pas valide")
 
                                     except Exception as e:
                                         QgsMessageLog.logMessage(
                                             f"Erreur lors du chargement du raster {raster_name}: {str(e)}", "Top'Eau",
                                             Qgis.Warning)
 
+                            found = True
                             break
 
                     except Exception as e:
                         QMessageBox.warning(self, "Erreur",
                                                 f"Erreur avec la requête {i + 1}: {e}")
 
+
+
             conn.close()
 
-            QgsMessageLog.logMessage(f"{len(all_occurrences)} valeur(s) correspondante(s) entre le vecteur et la table mesure",
-                                     "Top'Eau", Qgis.Success)
+            # appel de la fonction recup_lame_eau avec les rasters trouvés
+            if raster_layers:
+                return self.recup_lame_eau(raster_layers)
+            else:
+                QMessageBox.warning(self, "Erreur", "Aucun raster correspondant trouvé.")
+                return None
 
         except Exception as e:
-            QgsMessageLog.logMessage(f"Erreur lors de la lecture du GPKG: {str(e)}" , "Top'Eau", Qgis.Critical)
+            QgsMessageLog.logMessage(f"Erreur lors de la lecture du GPKG: {str(e)}", "Top'Eau", Qgis.Critical)
             return None
 
+
+    # fonction permettant de récupérer les valeurs comprises dans les rasters générés pour agrémenter le fichier ponctuel
+    def recup_lame_eau(self, raster_layers):
+
+        print(f"Nombre de rasters reçus: {len(raster_layers)}")
+
+        # récupération du vecteur renseigné par l'utilisateur
+
+        selected_points = self.inputPoints.lineEdit().text()
+        # vérification de la sélection d'un fichier en fonction du choix de l'utilisateur...
+        # ...localement...
+        if not selected_points or selected_points.strip() == "":
+            # récupération de la couche sélectionnée depuis le projet
+            layer_points = self.inputPoints_2.currentLayer()
+            if layer_points is None or not isinstance(layer_points, QgsVectorLayer):
+                QMessageBox.warning(self, "Erreur", "Veuillez sélectionner un fichier de points ou une couche.")
+                return None
+            selected_points = layer_points
+            use_layer = True
+        else:
+            # vérification de l'existence du projet
+            if not os.path.exists(selected_points):
+                QMessageBox.warning(self, "Erreur", f"Le fichier n'existe pas : {selected_points}")
+                return None
+            use_layer = False
+
+        # mise à jour de la barre de progression
+        self.progressBar.setValue(50)
+
+        # définition d'un chemin pour la couche de points
+        path_points = os.path.join(temp_path, "points_lame_eau.shp")
+
+        try:
+
+            # traitement de chaque raster
+            current_layer = layer_points
+
+            for i, raster_layer in enumerate(raster_layers):
+
+                # ajout de l'algorithme natif de QGIS "Prélèvements des valeurs rasters vers points" pour récupérer les lames d'eau
+                # comprises dans les rasters du GPKG
+                result = processing.run("native:rastersampling", {
+                    'INPUT': current_layer,
+                    'RASTERCOPY': raster_layer,
+                    'COLUMN_PREFIX': f'lame_eau_{i + 1}_',
+                    'OUTPUT': 'memory:'
+            })
+
+                # création d'un résultat en mémoire
+                current_layer = result['OUTPUT']
+
+            # sauvegarde du résultat final
+            final_path = os.path.join(temp_path, "points_lame_eau.shp")
+
+            # s'assurer que le fichier n'existe pas
+            if os.path.exists(final_path):
+                base_name = final_path[:-4]
+                for ext in ['.shp', '.shx', '.dbf', '.prj', '.cpg']:
+                    file_path = base_name + ext
+                    if os.path.exists(file_path):
+                        os.remove(file_path)
+
+            # sauvegarde de la couche finale
+            save_result = processing.run("native:savefeatures", {
+                'INPUT': current_layer,
+                'OUTPUT': final_path
+            })
+
+            # mise à jour de la barre de progression
+            self.progressBar.setValue(75)
+
+            # chargement de la couche finale
+            layer_name = "points_lame_eau"
+            layer_finale = QgsVectorLayer(path_points, layer_name, "ogr")
+
+            if not layer_finale.isValid():
+                QMessageBox.critical(self, "Erreur", "La couche de points finale n'est pas valide.")
+                return None
+
+            # ajout de la couche au projet
+            QgsProject.instance().addMapLayer(layer_finale)
+
+            # mise à jour de la barre de progression
+            self.progressBar.setValue(100)
+
+            # message de succès & informant l'utilisateur des données créées
+            feature_count = layer_finale.featureCount()
+            field_count = len(layer_finale.fields())
+            QMessageBox.information(self, "Succès",
+                                    f"Couche '{layer_name}' ajoutée avec succès !\n"
+                                    f"- {feature_count} entités\n"
+                                    f"- {field_count} champs\n"
+                                    f"- Fichier sauvegardé : {path_points}")
+
+            # log QGIS
+            QgsMessageLog.logMessage(
+                f"Couche '{layer_name}' créée avec succès : {feature_count} entités, {field_count} champs",
+                "Top'Eau", Qgis.Success)
+
+            return layer_finale
+
+        except Exception as e:
+            error_msg = f"Erreur lors du traitement des rasters : {str(e)}"
+            QgsMessageLog.logMessage(error_msg, "Top'Eau", Qgis.Critical)
+            QMessageBox.critical(self, "Erreur", error_msg)
+            return None
 
     # fonction permettant de convertir n'importe quel format de date vers le format de date "yyyy-mm-dd %" du GPKG
     def convert_to_iso_date(self, value):
