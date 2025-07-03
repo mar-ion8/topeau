@@ -441,10 +441,13 @@ class BiodivWidget(QDialog, form_traitement):
     # et de relever un niveau d'eau unique et une lame d'eau unique pour chaque date
     def _process_interval_mode(self, layer_points, raster_date_mapping):
 
+        # récupération du nom de la couche décidé par l'utilisateur
+        nom_couche = self.nomCouche.text()
+
         # création d'une couche temporaire avec les champs originaux + nouveaux champs
         temp_layer = QgsVectorLayer(
             f"Point?crs={layer_points.crs().authid()}",
-            "temp_points",
+            nom_couche,  # Utilisation du nom_couche ici
             "memory"
         )
 
@@ -454,22 +457,23 @@ class BiodivWidget(QDialog, form_traitement):
             temp_layer.addAttribute(field)
 
         # ajout des nouveaux champs
-        # NB : les noms des champs sont trop longs pour un fichier ShapeFile
+
+        # ajout du champ contenant la date du relevé pris sur le terrain (date contenue dans la table mesure)
         temp_layer.addAttribute(QgsField("date_releve_terrain", QVariant.Date))
+        # niveau d'eau relevé sur le terrain (niveau contenu dans la table mesure)
         temp_layer.addAttribute(QgsField("niveau_eau_cm", QVariant.Int))
+        # valeur récupérée sur le raster contenu dans le GPKG et correspondant au niveau d'eau relevé
         temp_layer.addAttribute(QgsField("lame_eau", QVariant.Double))
         temp_layer.commitChanges()
 
         # création d'une variable permettant de récupérer les informations à ajouter aux champs créés
         features_to_add = []
 
-        # pour chaque entité avec un id propre contenue dans le fichier vecteur poncutel fourni par l'utilsiateur...
+        # pour chaque entité avec un id propre contenue dans le fichier vecteur ponctuel fourni par l'utilisateur...
         for original_feature in layer_points.getFeatures():
             feature_id = original_feature.id()
 
             # ... boucle sur chaque correspondance raster-date...
-            # = il y aura autant d'entités uniques dupliquées qu'il y aura de dates correspondantes entre l'intervalle
-            # renseignée par l'utilisateur et celles comprises dans la table mesure du GPGK
             for mapping in raster_date_mapping:
                 # ...duplication de l'entité...
                 new_feature = QgsFeature(temp_layer.fields())
@@ -485,17 +489,12 @@ class BiodivWidget(QDialog, form_traitement):
 
                 features_to_add.append((new_feature, mapping['raster']))
 
-        # application de l'extraction de valeurs du raster (donc la récupération de la lame d'eau) pour chaque groupe
-        current_layer = temp_layer
-        current_layer.startEditing()
+        # application de l'extraction de valeurs du raster
+        temp_layer.startEditing()
 
-        # boucle sur les informations à ajouter pour s'assurer qu'elles soient intégrées sous la forme d'un champ chacune
-        # et non sous la forme d'un champ par lame d'eau récupérée
+        # boucle sur les informations à traiter (info vecteurs et rasters)
         for i, (feature, raster) in enumerate(features_to_add):
-
-            " A MODIFIER EN FONCTION DES PREFERENCES UTILISATEURS "
-
-            # création d'une couche temporaire avec une seule entité à laquelle on ajoute les informations récupérées précédemment
+            # création d'une couche temporaire avec une seule entité
             single_feature_layer = QgsVectorLayer(
                 f"Point?crs={layer_points.crs().authid()}",
                 "single_point",
@@ -510,7 +509,8 @@ class BiodivWidget(QDialog, form_traitement):
             single_feature_layer.addFeature(feature)
             single_feature_layer.commitChanges()
 
-            # application de l'extraction de valeur pour récupérer l'information de la lame d'eau
+            # application de l'extraction de valeur (algorithme QGIS : "Prélèvement des valeurs rasters vers ponctuels")
+            # pour récupérer l'information de la lame d'eau
             result = processing.run("native:rastersampling", {
                 'INPUT': single_feature_layer,
                 'RASTERCOPY': raster,
@@ -518,7 +518,7 @@ class BiodivWidget(QDialog, form_traitement):
                 'OUTPUT': 'memory:'
             })
 
-            # récupération de la valeur et mise à jour de la couche pour chaque lame d'eau récupérée
+            # récupération de la valeur et mise à jour de la couche
             result_layer = result['OUTPUT']
             for result_feature in result_layer.getFeatures():
                 # récupération de la valeur du raster
@@ -530,76 +530,95 @@ class BiodivWidget(QDialog, form_traitement):
 
                 # ajout de l'entité avec la valeur
                 feature.setAttribute("lame_eau", raster_value)
-                current_layer.addFeature(feature)
+                temp_layer.addFeature(feature)
 
             # mise à jour de la progression
             progress = 50 + (25 * (i + 1) / len(features_to_add))
             self.progressBar.setValue(int(progress))
 
-        current_layer.commitChanges()
+        temp_layer.commitChanges()
 
-        # appel à la fonction permettant de créer et sauvegarder la couche ponctuelle créée
+        # ajout de la couche au projet QGIS
+        QgsProject.instance().addMapLayer(temp_layer)
+        self.progressBar.setValue(100)
 
-        " PARAMETRAGE DANS L'APPEL ET LE STOCKAGE DE LA COUCHE A VOIR AVEC UTILISATEURS "
+        # rafraîchissement de la vue
+        if hasattr(self, 'iface') and self.iface:
+            self.iface.mapCanvas().refresh()
 
-        return self._save_and_load_final_layer(current_layer, "points_lame_eau_intervalle")
+        return temp_layer
 
 
     # fonction permettant de conserver le nombre d'entités de base en ajoutant à la table attributaire de la couche en
     # entrée une seule colonne contenant la lame d'eau récupérée pour une entité en fonction de la date à laquelle
     # elle est associée dans le fichier vecteur
     def _process_field_mode(self, layer_points, raster_date_mapping):
-
         # récupération du nom du champ date
         field_name = self.nomChamp.text()
 
-        # création d'une couche temporaire avec les champs originaux + nouveau champ
+        # récupération du nom de la couche
+        nom_couche = self.nomCouche.text()
+
+        # création d'une couche temporaire avec les champs originaux + nouveaux champs
         temp_layer = QgsVectorLayer(
             f"Point?crs={layer_points.crs().authid()}",
-            "temp_points",
+            nom_couche,  # Utilisation du nom_couche ici
             "memory"
         )
 
-        # copie des champs originaux + ajout du champ lame_eau
+        # copie des champs originaux + ajout des nouveaux champs
         temp_layer.startEditing()
         for field in layer_points.fields():
             temp_layer.addAttribute(field)
         temp_layer.addAttribute(QgsField("lame_eau", QVariant.Double))
+        temp_layer.addAttribute(QgsField("niveau_eau_cm", QVariant.Int))
         temp_layer.commitChanges()
 
         # création d'un dictionnaire pour un accès rapide aux rasters par date
         date_to_raster = {}
+        # création d'un dictionnaire pour un accès rapide aux niveaux d'eau relevés par date
+        date_to_niveau_eau = {}
         for mapping in raster_date_mapping:
             # Utilisation de la date convertie comme clé
             date_key = self.convert_to_iso_date(mapping['date'])
             date_to_raster[date_key] = mapping['raster']
+            date_to_niveau_eau[date_key] = mapping['niveau_eau']
+
             # ajout aussi de la date originale comme clé alternative
             date_to_raster[str(mapping['date'])] = mapping['raster']
-
-        # print(f"Dictionnaire date-raster créé avec {len(date_to_raster)} entrées")
+            date_to_niveau_eau[str(mapping['date'])] = mapping['niveau_eau']
 
         features_to_add = []
         processed_count = 0
 
-        # Traitement de chaque point individuellement
+        # traitement de chaque point individuellement
+        # (un point créé = un point récupéré sur la couche de base)
+        # le traitement traite toutes les entités du fichier vecteur donné par l'utilisateur une par une
         for feature in layer_points.getFeatures():
             try:
-                # Récupération de la date du point
+                # récupération de la date du point
                 point_date = feature[field_name]
                 if point_date is None:
                     print(f"Point ID {feature.id()} : date manquante")
                     continue
 
-                # Conversion de la date pour la correspondance
+                # conversion de la date pour la correspondance
                 point_date_iso = self.convert_to_iso_date(point_date)
                 print(f"Point ID {feature.id()} : date = {point_date} -> {point_date_iso}")
 
-                # Recherche du raster correspondant
+                # recherche du raster correspondant
                 corresponding_raster = None
+                # recherche du niveau d'eau correspondant
+                corresponding_niveau_eau = None
+
+                # pour toutes les correspondances, récupération des informations désirées
+
                 if point_date_iso in date_to_raster:
                     corresponding_raster = date_to_raster[point_date_iso]
+                    corresponding_niveau_eau = date_to_niveau_eau[point_date_iso]
                 elif str(point_date) in date_to_raster:
                     corresponding_raster = date_to_raster[str(point_date)]
+                    corresponding_niveau_eau = date_to_niveau_eau[str(point_date)]
 
                 if corresponding_raster is None:
                     print(f"Aucun raster trouvé pour la date {point_date_iso}")
@@ -609,71 +628,77 @@ class BiodivWidget(QDialog, form_traitement):
                     for field_orig in layer_points.fields():
                         new_feature.setAttribute(field_orig.name(), feature.attribute(field_orig.name()))
                     new_feature.setAttribute("lame_eau", None)
+                    new_feature.setAttribute("niveau_eau_cm", None)
                     features_to_add.append(new_feature)
                     continue
 
-                # création d'une couche temporaire avec un seul point
+                # création d'une couche temporaire
                 single_point_layer = QgsVectorLayer(
                     f"Point?crs={layer_points.crs().authid()}",
                     "single_point",
                     "memory"
                 )
+                # ajout des champs (nouveaux + originaux) à la couche
                 single_point_layer.startEditing()
                 for field_orig in layer_points.fields():
                     single_point_layer.addAttribute(field_orig)
                 single_point_layer.commitChanges()
-
                 single_point_layer.startEditing()
                 single_point_layer.addFeature(feature)
                 single_point_layer.commitChanges()
 
-                # récupération de la lame d'eau pour ce point spécifique à l'aide de l'algorithme natif "Prélèvements de valeurs rasters avec points"
+                # récupération de la lame d'eau pour ce point spécifique
                 result = processing.run("native:rastersampling", {
                     'INPUT': single_point_layer,
                     'RASTERCOPY': corresponding_raster,
                     'COLUMN_PREFIX': 'temp_lame_eau_',
-                    'OUTPUT': 'memory:'
+                    'OUTPUT': f'memory:'
                 })
 
+                # récupération de la couche temporaire résultante dans une variable pour l'implémenter
                 result_layer = result['OUTPUT']
 
-                # récupération de la valeur et création de la nouvelle entité
+                # création de la géométrie de la nouvelle entité
                 for result_feature in result_layer.getFeatures():
                     new_feature = QgsFeature(temp_layer.fields())
                     new_feature.setGeometry(result_feature.geometry())
 
-                    # copie des attributs originaux
+                    # copie des attributs originaux (contenu des champs originaux)
                     for field_orig in layer_points.fields():
                         new_feature.setAttribute(field_orig.name(), result_feature.attribute(field_orig.name()))
 
-                    # récupération de la valeur du raster
+                    # récupération de la valeur du raster (contenu récupéré via le croisement des données)
                     lame_eau_value = None
                     for field_result in result_feature.fields():
                         if field_result.name().startswith('temp_lame_eau_'):
                             lame_eau_value = result_feature.attribute(field_result.name())
                             break
-
+                    # association des nouveaux champs avec leur contenu
                     new_feature.setAttribute("lame_eau", lame_eau_value)
+                    new_feature.setAttribute("niveau_eau_cm", corresponding_niveau_eau)
                     features_to_add.append(new_feature)
 
-                    # print(f"Point ID {feature.id()} : lame_eau = {lame_eau_value}")
-
+                    # arrêt de la boucle après l'implémentation pour que les traitements recommencent sur une autre entité
                     break
 
+                # variable pour mettre à jour dynamiquement la barre de progression
                 processed_count += 1
-
-                # mise à jour de la progression
+                # mise à jour de la barre de progression
                 progress = 50 + (25 * processed_count / layer_points.featureCount())
                 self.progressBar.setValue(int(progress))
 
             except Exception as e:
-                print(f"Erreur lors du traitement du point ID {feature.id()} : {e}")
-                # ajout du point avec valeur nulle en cas d'erreur
+
+                QgsMessageLog.logMessage(f"Erreur lors du traitement du point ID {feature.id()} : {e}",
+                                         "Top'Eau", Qgis.Critical)
+
+                # ajout du point avec valeurs nulles en cas d'erreur
                 new_feature = QgsFeature(temp_layer.fields())
                 new_feature.setGeometry(feature.geometry())
                 for field_orig in layer_points.fields():
                     new_feature.setAttribute(field_orig.name(), feature.attribute(field_orig.name()))
                 new_feature.setAttribute("lame_eau", None)
+                new_feature.setAttribute("niveau_eau_cm", None)
                 features_to_add.append(new_feature)
 
         # ajout de toutes les entités à la couche temporaire
@@ -681,62 +706,16 @@ class BiodivWidget(QDialog, form_traitement):
         temp_layer.addFeatures(features_to_add)
         temp_layer.commitChanges()
 
-        # print(f"Traitement terminé : {len(features_to_add)} points traités")
-
-        return self._save_and_load_final_layer(temp_layer, "points_lame_eau_champ")
-
-
-    # fonction permettant de gérer la couche vecteur créée par l'une ou l'autre des méthodes précédentes
-    # pour la sauvegarder et la charger dans le projet QGIS en cours
-    def _save_and_load_final_layer(self, layer, layer_name):
-
-        " A MODIFIER POUR : 1. CREER UN DUPLICAT AMELIORE DE LA COUCHE DE BASE, 2. GERER L'EXTENSION? "
-
-        # création d'un chemin pour un enregistrement temporaire
-        final_path = os.path.join(temp_path, f"{layer_name}.gpkg")
-
-        # suppression des fichiers existants
-        if os.path.exists(final_path):
-            base_name = final_path[:-4]
-            for ext in ['.gpkg']:
-                file_path = base_name + ext
-                if os.path.exists(file_path):
-                    os.remove(file_path)
-
-        # sauvegarde
-        processing.run("native:savefeatures", {
-            'INPUT': layer,
-            'OUTPUT': final_path
-        })
-
-        self.progressBar.setValue(85)
-
-        # chargement de la couche finale
-        layer_finale = QgsVectorLayer(final_path, layer_name, "ogr")
-
-        if not layer_finale.isValid():
-            QMessageBox.critical(self, "Erreur", "La couche finale n'est pas valide.")
-            return None
-
-        # ajout au projet
-        QgsProject.instance().addMapLayer(layer_finale)
+        # ajout de la couche au projet QGIS
+        QgsProject.instance().addMapLayer(temp_layer)
+        # màj de la barre de progression
         self.progressBar.setValue(100)
 
-        # message de succès
-        feature_count = layer_finale.featureCount()
-        field_count = len(layer_finale.fields())
-        QMessageBox.information(self, "Succès",
-                                f"Couche '{layer_name}' ajoutée avec succès !\n"
-                                f"- {feature_count} entités\n"
-                                f"- {field_count} champs\n"
-                                f"- Fichier sauvegardé : {final_path}")
+        # rafraîchissement de la vue
+        if hasattr(self, 'iface') and self.iface:
+            self.iface.mapCanvas().refresh()
 
-        QgsMessageLog.logMessage(
-            f"Couche '{layer_name}' créée avec succès : {feature_count} entités, {field_count} champs",
-            "Top'Eau", Qgis.Success)
-
-
-        return layer_finale
+        return temp_layer
 
 
     # fonction permettant de convertir n'importe quel format de date vers le format de date "yyyy-mm-dd %" du GPKG
