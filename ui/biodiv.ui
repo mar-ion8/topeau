@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>600</width>
-    <height>800</height>
+    <height>820</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -17,7 +17,7 @@
    <property name="geometry">
     <rect>
      <x>250</x>
-     <y>750</y>
+     <y>770</y>
      <width>341</width>
      <height>32</height>
     </rect>
@@ -533,7 +533,7 @@
    <property name="geometry">
     <rect>
      <x>300</x>
-     <y>120</y>
+     <y>130</y>
      <width>261</width>
      <height>61</height>
     </rect>
@@ -545,7 +545,7 @@
     </font>
    </property>
    <property name="text">
-    <string>Fichier vecteur ponctuel depuis le projet en cours :</string>
+    <string>...contenu dans le projet en cours :</string>
    </property>
    <property name="alignment">
     <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
@@ -567,8 +567,8 @@
   <widget class="QLabel" name="label_2">
    <property name="geometry">
     <rect>
-     <x>70</x>
-     <y>330</y>
+     <x>80</x>
+     <y>320</y>
      <width>491</width>
      <height>71</height>
     </rect>
@@ -590,7 +590,7 @@
    <property name="geometry">
     <rect>
      <x>10</x>
-     <y>760</y>
+     <y>780</y>
      <width>251</width>
      <height>16</height>
     </rect>
@@ -607,8 +607,8 @@
   <widget class="QPushButton" name="generer">
    <property name="geometry">
     <rect>
-     <x>160</x>
-     <y>690</y>
+     <x>150</x>
+     <y>730</y>
      <width>301</width>
      <height>23</height>
     </rect>
@@ -639,7 +639,7 @@
     </font>
    </property>
    <property name="text">
-    <string>... une intervalle que je souhaite préciser</string>
+    <string>...une intervalle que je précise</string>
    </property>
   </widget>
   <widget class="QDateEdit" name="dateDebut">
@@ -661,8 +661,8 @@
    </property>
    <property name="date">
     <date>
-     <year>2023</year>
-     <month>1</month>
+     <year>2025</year>
+     <month>6</month>
      <day>1</day>
     </date>
    </property>
@@ -687,7 +687,7 @@
    <property name="date">
     <date>
      <year>2025</year>
-     <month>1</month>
+     <month>7</month>
      <day>1</day>
     </date>
    </property>
@@ -718,7 +718,7 @@
    <property name="geometry">
     <rect>
      <x>20</x>
-     <y>630</y>
+     <y>600</y>
      <width>191</width>
      <height>27</height>
     </rect>
@@ -728,7 +728,7 @@
    <property name="geometry">
     <rect>
      <x>20</x>
-     <y>580</y>
+     <y>550</y>
      <width>491</width>
      <height>61</height>
     </rect>
@@ -807,19 +807,19 @@
    <property name="geometry">
     <rect>
      <x>40</x>
-     <y>360</y>
+     <y>350</y>
      <width>80</width>
      <height>18</height>
     </rect>
    </property>
    <property name="text">
-    <string> </string>
+    <string/>
    </property>
   </widget>
   <widget class="QLabel" name="label_16">
    <property name="geometry">
     <rect>
-     <x>20</x>
+     <x>30</x>
      <y>150</y>
      <width>111</width>
      <height>21</height>
@@ -832,7 +832,7 @@
     </font>
    </property>
    <property name="text">
-    <string>Stocké en local : </string>
+    <string>...stocké en local : </string>
    </property>
    <property name="alignment">
     <set>Qt::AlignCenter</set>
@@ -876,6 +876,41 @@
     <bool>true</bool>
    </property>
   </widget>
+  <widget class="QLineEdit" name="nomCouche">
+   <property name="geometry">
+    <rect>
+     <x>210</x>
+     <y>670</y>
+     <width>181</width>
+     <height>21</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label_17">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>660</y>
+     <width>221</width>
+     <height>51</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Tw Cen MT</family>
+     <pointsize>13</pointsize>
+    </font>
+   </property>
+   <property name="text">
+    <string>Nom de la couche finale : </string>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignCenter</set>
+   </property>
+   <property name="wordWrap">
+    <bool>true</bool>
+   </property>
+  </widget>
   <zorder>line</zorder>
   <zorder>terminer</zorder>
   <zorder>label</zorder>
@@ -898,6 +933,8 @@
   <zorder>label_16</zorder>
   <zorder>radioChoix</zorder>
   <zorder>label_6</zorder>
+  <zorder>nomCouche</zorder>
+  <zorder>label_17</zorder>
  </widget>
  <customwidgets>
   <customwidget>
