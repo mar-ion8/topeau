@@ -463,7 +463,9 @@ class BiodivWidget(QDialog, form_traitement):
         # niveau d'eau relevé sur le terrain (niveau contenu dans la table mesure)
         temp_layer.addAttribute(QgsField("niveau_eau_cm", QVariant.Int))
         # valeur récupérée sur le raster contenu dans le GPKG et correspondant au niveau d'eau relevé
-        temp_layer.addAttribute(QgsField("lame_eau", QVariant.Double))
+        field_round = QgsField("lame_eau", QVariant.Double)
+        field_round.setPrecision(3)
+        temp_layer.addAttribute(field_round)
         temp_layer.commitChanges()
 
         # création d'une variable permettant de récupérer les informations à ajouter aux champs créés
@@ -570,7 +572,9 @@ class BiodivWidget(QDialog, form_traitement):
         temp_layer.startEditing()
         for field in layer_points.fields():
             temp_layer.addAttribute(field)
-        temp_layer.addAttribute(QgsField("lame_eau", QVariant.Double))
+        field_round = QgsField("lame_eau", QVariant.Double)
+        field_round.setPrecision(3)
+        temp_layer.addAttribute(field_round)
         temp_layer.addAttribute(QgsField("niveau_eau_cm", QVariant.Int))
         temp_layer.commitChanges()
 
