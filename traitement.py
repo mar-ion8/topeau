@@ -625,7 +625,7 @@ class TraitementWidget(QDialog, form_traitement):
             # vérification de l'existence du fichier
             if not os.path.exists(path_clip):
                 QgsMessageLog.logMessage(f"Le fichier raster {path_clip} n'existe pas", "Top'Eau", Qgis.Warning)
-                # Utiliser des valeurs par défaut pour les déciles
+                # utilisation des valeurs par défaut pour les déciles
                 data_pixels = None
             else:
                 # traitement du raster avec GDAL
@@ -641,8 +641,35 @@ class TraitementWidget(QDialog, form_traitement):
                     nodata_value = band.GetNoDataValue()
                     dataset = None
 
+            # connexion SQLite au GPKG créé pour pouvoir effectuer des requêtes sur ses données (création, insertion...)
             conn = sqlite3.connect(gpkg_path)
             cursor = conn.cursor()
+
+            # connexion SpatiaLite pour pouvoir créer et générer des géométries valides
+            conn.enable_load_extension(True)
+            spatialite_loaded = False
+
+            try:
+                # vérification du chargement de SpatiaLite si disponible
+                conn.load_extension("mod_spatialite")
+                cursor.execute("SELECT InitSpatialMetaData(1)")
+                spatialite_loaded = True
+                QgsMessageLog.logMessage("SpatiaLite activé", "Top'Eau", Qgis.Info)
+            except:
+                try:
+                    # essayer avec spatialite sur certains systèmes
+                    conn.load_extension("spatialite")
+                    cursor.execute("SELECT InitSpatialMetaData(1)")
+                    spatialite_loaded = True
+                    QgsMessageLog.logMessage("SpatiaLite activé (spatialite)", "Top'Eau", Qgis.Info)
+                except:
+                    # utilisation des fonctions GPKG natives si pas de connexion spatialite
+                    spatialite_loaded = False
+                    QgsMessageLog.logMessage("SpatiaLite non disponible, utilisation des fonctions GPKG natives",
+                                             "Top'Eau", Qgis.Info)
+
+            # stockage de l'état de connexion pour les autres fonctions
+            self.spatialite_loaded = spatialite_loaded
 
             # 4.1.1. Création des tables système GeoPackage obligatoires
             # création de la table pour les systèmes de référence : table gpkg_spatial_ref_sys
@@ -702,6 +729,32 @@ class TraitementWidget(QDialog, form_traitement):
                             CONSTRAINT fk_gc_srs FOREIGN KEY (srs_id) REFERENCES gpkg_spatial_ref_sys(srs_id)
                         )
                     ''')
+
+            # création de la table contenant les informations liées à l'extension : table gpkg_extensions
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS gpkg_extensions (
+                    table_name TEXT,
+                    column_name TEXT,
+                    extension_name TEXT NOT NULL,
+                    definition TEXT NOT NULL,
+                    scope TEXT NOT NULL,
+                    CONSTRAINT ge_tce UNIQUE (table_name, column_name, extension_name)
+                )
+            ''')
+
+            # création de la table pour les triggers de validation géométrique : table gpkg_data_columns
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS gpkg_data_columns (
+                    table_name TEXT NOT NULL,
+                    column_name TEXT NOT NULL,
+                    name TEXT,
+                    title TEXT,
+                    description TEXT,
+                    mime_type TEXT,
+                    constraint_name TEXT,
+                    CONSTRAINT pk_gdc PRIMARY KEY (table_name, column_name)
+                )
+            ''')
 
             # 4.2. récupération d'informations nécessaires à l'insertion de données attributaires dans les tables
 
@@ -850,36 +903,33 @@ class TraitementWidget(QDialog, form_traitement):
                         VALUES (?, ?, ?, ?, ?, ?)
                     ''', ('zone_etude', 'emprise', geometry_type, srid, 0, 0))
 
-            # Préparation de la requête d'insertion avec les déciles
+            # préparation de la requête d'insertion avec les déciles
             insert_columns = '''nom, emprise, surface_m2, min_parcelle, max_parcelle, moyenne_parcelle, mediane_parcelle'''
             insert_values = '''?, ?, ?, ?, ?, ?, ?'''
 
-            # Ajout des colonnes et valeurs pour les déciles
+            # ajout des colonnes et valeurs pour les déciles
             for i in range(10, 100, 10):
                 insert_columns += f', decile_{i}'
                 insert_values += ', ?'
 
-            insert_sql = f'''
-                       INSERT INTO zone_etude({insert_columns}) 
-                       VALUES ({insert_values})'''
-
-            # Préparation des valeurs à insérer
-            insert_data = [
-                self.nomZE.text(),
-                geometry_wkb,
-                surface_ze,
-                round(self.valeur_min, 2),
-                round(self.valeur_max, 2),
-                round(self.valeur_moy, 2),
-                round(self.valeur_med, 2)
-            ]
-
-            # Ajout des valeurs de déciles
-            for i in range(10, 100, 10):
-                decile_key = f'decile_{i}'
-                insert_data.append(deciles.get(decile_key, None))
-
-            cursor.execute(insert_sql, insert_data)
+            # création de la couche géométrique si le Wkb est récupéré
+            if geometry_wkb:
+                cursor.execute('''
+                    INSERT INTO zone_etude(nom, emprise, surface_m2, min_parcelle, max_parcelle, moyenne_parcelle, mediane_parcelle, {}) 
+                    VALUES (?, ST_GeomFromWKB(?, ?), ?, ?, ?, ?, ?, {})
+                '''.format(
+                    ', '.join([f'decile_{i}' for i in range(10, 100, 10)]),
+                    ', '.join(['?' for i in range(10, 100, 10)])
+                ), [
+                       self.nomZE.text(),
+                       geometry_wkb,
+                       srid,
+                       surface_ze,
+                       round(self.valeur_min, 2),
+                       round(self.valeur_max, 2),
+                       round(self.valeur_moy, 2),
+                       round(self.valeur_med, 2)
+                   ] + [deciles.get(f'decile_{i}', None) for i in range(10, 100, 10)])
 
             # 4.4.2. création de la table "hauteur_eau"
             # NB : l'insertion des données se fait dans une fonction dédiée car ce sont des données récupérées en fonction
@@ -1114,7 +1164,6 @@ class TraitementWidget(QDialog, form_traitement):
             QgsMessageLog.logMessage(f"Erreur création GPKG : {str(e)}", "Top'Eau", Qgis.Critical)
             raise e
 
-
     # étape interne à la génération des rasters
     # fonction permettant de formater les TIFF pour qu'ils passent en GeoPackage
     # la fonction est répétée automatiquement autant de fois qu'il y a de niveaux d'eau à traiter puisqu'elle est traitée par la boucle
@@ -1245,9 +1294,10 @@ class TraitementWidget(QDialog, form_traitement):
     # fonction permettant d'insérer les données dans la table attributaire du GPKG
     # la fonction est répétée automatiquement autant de fois qu'il y a de niveaux d'eau à traiter puisqu'elle est traitée par la boucle
     def ajouter_donnees_table_gpkg(self,
-                            gpkg_path, surface_totale, volume_total,
-                            classe_1_surf, classe_2_surf, classe_3_surf, classe_4_surf, classe_5_surf, classe_6_surf, classe_7_surf,
-                            raster_vectorise_path=None):
+                                   gpkg_path, surface_totale, volume_total,
+                                   classe_1_surf, classe_2_surf, classe_3_surf, classe_4_surf, classe_5_surf,
+                                   classe_6_surf, classe_7_surf,
+                                   raster_vectorise_path=None):
 
         from datetime import datetime
 
@@ -1269,7 +1319,7 @@ class TraitementWidget(QDialog, form_traitement):
 
             try:
                 if raster_vectorise_path and os.path.exists(raster_vectorise_path):
-                    # charger la couche vecteur
+                    # chargement de la couche vecteur
                     vector_layer = QgsVectorLayer(raster_vectorise_path, "temp_vector", "ogr")
 
                     if vector_layer.isValid():
@@ -1296,7 +1346,7 @@ class TraitementWidget(QDialog, form_traitement):
                                     unified_geom.convertToMultiType()
                                 geom_raster_wkb = unified_geom.asWkb()
 
-                                # Calcul des extent pour mise à jour de gpkg_contents
+                                # calcul des extent pour mise à jour de gpkg_contents
                                 bbox = unified_geom.boundingBox()
                                 min_x = bbox.xMinimum()
                                 min_y = bbox.yMinimum()
@@ -1323,72 +1373,111 @@ class TraitementWidget(QDialog, form_traitement):
             conn = sqlite3.connect(gpkg_path)
             cursor = conn.cursor()
 
+            # chargement de SpatiaLite pour cette connexion
+            spatialite_loaded = False
+            conn.enable_load_extension(True)
+
+            try:
+                conn.load_extension("mod_spatialite")
+                spatialite_loaded = True
+                QgsMessageLog.logMessage("SpatiaLite chargé pour cette connexion", "Top'Eau", Qgis.Info)
+            except:
+                try:
+                    conn.load_extension("spatialite")
+                    spatialite_loaded = True
+                    QgsMessageLog.logMessage("SpatiaLite chargé (spatialite) pour cette connexion", "Top'Eau",
+                                             Qgis.Info)
+                except:
+                    spatialite_loaded = False
+                    QgsMessageLog.logMessage("SpatiaLite non disponible pour cette connexion", "Top'Eau", Qgis.Info)
+
             # 3.7.2. insertion du contenu dans la table
-            if geom_raster_wkb :
-                cursor.execute('''
-                       INSERT INTO hauteur_eau 
-                       (niveau_eau, 
-                       nom, 
-                       surface_eau_m2, 
-                       volume_eau_m3,
-                       classe_1, 
-                       classe_2,
-                       classe_3,
-                       classe_4,
-                       classe_5,
-                       classe_6,
-                       classe_7,
-                       geom,
-                       nom_fichier) 
-                       VALUES 
-                       (?, 
-                       ?, 
-                       ?, 
-                       ?,
-                       ?,
-                       ?,
-                       ?,
-                       ?,
-                       ?,
-                       ?,
-                       ?,
-                       ?,
-                       ?)
-                   ''', (
-                    round(self.current_level, 2),
-                    self.nomZE.text(),
-                    round(surface_totale, 2),
-                    round(volume_total, 2),
-                    round(classe_1_surf, 2),
-                    round(classe_2_surf, 2),
-                    round(classe_3_surf, 2),
-                    round(classe_4_surf, 2),
-                    round(classe_5_surf, 2),
-                    round(classe_6_surf, 2),
-                    round(classe_7_surf, 2),
-                    geom_raster_wkb,
-                    raster_name
-                ))
-                # mise à jour des extent dans gpkg_contents
-                cursor.execute('''
-                                    SELECT MIN(min_x), MIN(min_y), MAX(max_x), MAX(max_y) 
-                                    FROM (
-                                        SELECT ? as min_x, ? as min_y, ? as max_x, ? as max_y
-                                        UNION 
-                                        SELECT min_x, min_y, max_x, max_y FROM gpkg_contents WHERE table_name = 'hauteur_eau'
-                                    )
-                                ''', (min_x, min_y, max_x, max_y))
+            if geom_raster_wkb:
+                if spatialite_loaded:
+                    # test de validité avec SpatiaLite
+                    try:
+                        cursor.execute("SELECT ST_IsValid(ST_GeomFromWKB(?, ?))", (geom_raster_wkb, 2154))
+                        is_valid = cursor.fetchone()[0]
 
-                result = cursor.fetchone()
-                if result and all(v is not None for v in result):
+                        if not is_valid:
+                            QgsMessageLog.logMessage("Géométrie invalide détectée, tentative de réparation", "Top'Eau",
+                                                     Qgis.Warning)
+                            # tentative de réparation de la géométrie si elle n'est pas valide
+                            cursor.execute("SELECT ST_AsBinary(ST_MakeValid(ST_GeomFromWKB(?, ?)))",
+                                           (geom_raster_wkb, 2154))
+                            geom_result = cursor.fetchone()
+                            if geom_result and geom_result[0]:
+                                geom_raster_wkb = geom_result[0]
+                    except Exception as e:
+                        QgsMessageLog.logMessage(f"Erreur validation géométrie: {str(e)}", "Top'Eau", Qgis.Warning)
+
+                    # insertion des données avec SpatiaLite
                     cursor.execute('''
-                                        UPDATE gpkg_contents 
-                                        SET min_x = ?, min_y = ?, max_x = ?, max_y = ?, 
-                                            last_change = ?
-                                        WHERE table_name = 'hauteur_eau'
-                                    ''', (result[0], result[1], result[2], result[3],
-                                          datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%fZ')))
+                           INSERT INTO hauteur_eau 
+                           (niveau_eau, nom, surface_eau_m2, volume_eau_m3,
+                           classe_1, classe_2, classe_3, classe_4, classe_5, classe_6, classe_7,
+                           geom, nom_fichier) 
+                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ST_GeomFromWKB(?, ?), ?)
+                       ''', (
+                        round(self.current_level, 2),
+                        self.nomZE.text(),
+                        round(surface_totale, 2),
+                        round(volume_total, 2),
+                        round(classe_1_surf, 2),
+                        round(classe_2_surf, 2),
+                        round(classe_3_surf, 2),
+                        round(classe_4_surf, 2),
+                        round(classe_5_surf, 2),
+                        round(classe_6_surf, 2),
+                        round(classe_7_surf, 2),
+                        geom_raster_wkb,
+                        2154,
+                        raster_name
+                    ))
+                else:
+                    # insertion directe avec les fonctions GPKG natives (géométrie en blob)
+                    cursor.execute('''
+                           INSERT INTO hauteur_eau 
+                           (niveau_eau, nom, surface_eau_m2, volume_eau_m3,
+                           classe_1, classe_2, classe_3, classe_4, classe_5, classe_6, classe_7,
+                           geom, nom_fichier) 
+                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                       ''', (
+                        round(self.current_level, 2),
+                        self.nomZE.text(),
+                        round(surface_totale, 2),
+                        round(volume_total, 2),
+                        round(classe_1_surf, 2),
+                        round(classe_2_surf, 2),
+                        round(classe_3_surf, 2),
+                        round(classe_4_surf, 2),
+                        round(classe_5_surf, 2),
+                        round(classe_6_surf, 2),
+                        round(classe_7_surf, 2),
+                        geom_raster_wkb,
+                        raster_name
+                    ))
 
+                # mise à jour des extent dans gpkg_contents
+                if min_x is not None and min_y is not None and max_x is not None and max_y is not None:
+                    cursor.execute('''
+                                        SELECT MIN(min_x), MIN(min_y), MAX(max_x), MAX(max_y) 
+                                        FROM (
+                                            SELECT ? as min_x, ? as min_y, ? as max_x, ? as max_y
+                                            UNION 
+                                            SELECT min_x, min_y, max_x, max_y FROM gpkg_contents WHERE table_name = 'hauteur_eau'
+                                        )
+                                    ''', (min_x, min_y, max_x, max_y))
+
+                    result = cursor.fetchone()
+                    if result and all(v is not None for v in result):
+                        cursor.execute('''
+                                            UPDATE gpkg_contents 
+                                            SET min_x = ?, min_y = ?, max_x = ?, max_y = ?, 
+                                                last_change = ?
+                                            WHERE table_name = 'hauteur_eau'
+                                        ''', (result[0], result[1], result[2], result[3],
+                                              datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%fZ')))
 
             else:
                 # insertion sans géométrie si elle n'est pas disponible
@@ -1414,15 +1503,35 @@ class TraitementWidget(QDialog, form_traitement):
                 ))
 
             conn.commit()
-            QgsMessageLog.logMessage(f"Table SQLite créée avec succès", "Top'Eau", Qgis.Success)
+            QgsMessageLog.logMessage(f"Données ajoutées avec succès à la table hauteur_eau", "Top'Eau", Qgis.Success)
             return True
 
         except Exception as e:
-            QgsMessageLog.logMessage(f"Erreur SQLite: {str(e)}", "Top'Eau", Qgis.Critical)
+            QgsMessageLog.logMessage(f"Erreur ajout données table GPKG: {str(e)}", "Top'Eau", Qgis.Critical)
             raise e
         finally:
             if 'conn' in locals():
                 conn.close()
+
+    #fonction permettant de créer une couche vectorielle avec GDAL pour créer les entités polygonales des surfaces inondées
+    def creer_couche_vecteur_gdal(self, gpkg_path, layer_name, geom_type, fields_dict):
+
+        driver = ogr.GetDriverByName('GPKG')
+        ds = driver.Open(gpkg_path, 1)  # 1 = mode de màj
+
+        # création de la couche avec le bon SCR
+        srs = osr.SpatialReference()
+        srs.ImportFromEPSG(2154)
+
+        layer = ds.CreateLayer(layer_name, srs, geom_type)
+
+        # ajout des champs
+        for field_name, field_type in fields_dict.items():
+            field_def = ogr.FieldDefn(field_name, field_type)
+            layer.CreateField(field_def)
+
+        ds = None
+        return True
 
 
     # 5. fonction pour charger automatiquement les tables et rasters du GPKG dans QGIS
@@ -1487,9 +1596,6 @@ class TraitementWidget(QDialog, form_traitement):
                     QgsMessageLog.logMessage(f"Erreur lors du chargement du raster {raster_name}: {str(e)}", "Top'Eau",
                                              Qgis.Warning)
 
-            # 5.4. actualisation de la vue
-            iface.mapCanvas().refresh()
-
             QMessageBox.information(self, "Chargement terminé",
                                     f"Le GPKG a été chargé avec succès dans QGIS.\n"
                                     f"Tables et rasters disponibles dans le groupe '{nom_ze}'.")
@@ -1497,6 +1603,7 @@ class TraitementWidget(QDialog, form_traitement):
         except Exception as e:
             QgsMessageLog.logMessage(f"Erreur lors du chargement du GPKG: {str(e)}", "Top'Eau", Qgis.Critical)
             QMessageBox.warning(self, "Erreur", f"Erreur lors du chargement du GPKG:\n{str(e)}")
+
 
     # fonction nécessaire à la fonction précédente
     # fonction permettant de lister les rasters présents dans le GPKG
