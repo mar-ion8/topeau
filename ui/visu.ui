@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>499</width>
-    <height>623</height>
+    <height>617</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -16,10 +16,10 @@
   <widget class="QDialogButtonBox" name="terminer">
    <property name="geometry">
     <rect>
-     <x>140</x>
-     <y>590</y>
-     <width>341</width>
-     <height>32</height>
+     <x>250</x>
+     <y>550</y>
+     <width>231</width>
+     <height>41</height>
     </rect>
    </property>
    <property name="orientation">
@@ -533,8 +533,8 @@
   <widget class="QPushButton" name="visuDeciles">
    <property name="geometry">
     <rect>
-     <x>40</x>
-     <y>540</y>
+     <x>50</x>
+     <y>480</y>
      <width>91</width>
      <height>31</height>
     </rect>
@@ -549,43 +549,11 @@
     <string>les déciles</string>
    </property>
   </widget>
-  <widget class="QgsFileWidget" name="inputGPKG">
-   <property name="geometry">
-    <rect>
-     <x>30</x>
-     <y>440</y>
-     <width>261</width>
-     <height>27</height>
-    </rect>
-   </property>
-  </widget>
-  <widget class="QLabel" name="label_3">
-   <property name="geometry">
-    <rect>
-     <x>30</x>
-     <y>400</y>
-     <width>381</width>
-     <height>61</height>
-    </rect>
-   </property>
-   <property name="font">
-    <font>
-     <family>Tw Cen MT</family>
-     <pointsize>14</pointsize>
-    </font>
-   </property>
-   <property name="text">
-    <string>Fichier GPKG relatif à la zone d'étude</string>
-   </property>
-   <property name="wordWrap">
-    <bool>true</bool>
-   </property>
-  </widget>
   <widget class="QLabel" name="label_4">
    <property name="geometry">
     <rect>
-     <x>30</x>
-     <y>490</y>
+     <x>40</x>
+     <y>430</y>
      <width>381</width>
      <height>51</height>
     </rect>
@@ -624,14 +592,25 @@
     <set>Qt::AlignCenter</set>
    </property>
   </widget>
+  <widget class="QProgressBar" name="progressBar">
+   <property name="geometry">
+    <rect>
+     <x>20</x>
+     <y>560</y>
+     <width>221</width>
+     <height>20</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Tw Cen MT</family>
+    </font>
+   </property>
+   <property name="value">
+    <number>24</number>
+   </property>
+  </widget>
  </widget>
- <customwidgets>
-  <customwidget>
-   <class>QgsFileWidget</class>
-   <extends>QWidget</extends>
-   <header>qgsfilewidget.h</header>
-  </customwidget>
- </customwidgets>
  <resources/>
  <connections>
   <connection>
