@@ -25,14 +25,22 @@ import subprocess
 from osgeo import gdal, ogr, osr
 import sqlite3
 
+# import librairies nécessaires à la datavisualisation
+import seaborn as sns
+import pandas as pd
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
+
 # appel emplacement des fichiers de stockage des sorties temporaires -- style et temp
 temp_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "temp")
 qml_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "style")
 
-# lien entre traitement.py et traitement.ui
+# lien entre traitement.py et visu.ui
 ui_path = os.path.dirname(os.path.abspath(__file__))
 ui_path = os.path.join(ui_path, "ui")
 form_traitement, _ = uic.loadUiType(os.path.join(ui_path, "traitement.ui"))
+form_graph, _ = uic.loadUiType(os.path.join(ui_path, "visu.ui"))
 
 
 # mise en place de la classe TraitementWidget
@@ -56,6 +64,9 @@ class TraitementWidget(QDialog, form_traitement):
 
         # Bouton "Générer le raster"
         self.generer.clicked.connect(self.chargement_raster)
+
+        # Bouton "Visualiser les données
+        self.graphique.clicked.connect(self.lance_fenetre_graph)
 
         # boutons à cocher ("checkbox")
         self.oui = self.findChild(QCheckBox, "oui")
@@ -607,6 +618,8 @@ class TraitementWidget(QDialog, form_traitement):
         import os
         from datetime import datetime
 
+        self.deciles_calcules = {}
+
         try:
 
             # instauration d'une variable permettant de récupérer la date de création du fichier
@@ -792,6 +805,8 @@ class TraitementWidget(QDialog, form_traitement):
                         for i, percentile in enumerate(percentiles):
                             deciles[f'decile_{int(percentile)}'] = round(valeurs_deciles[i], 2)
 
+                        self.deciles_calcules = deciles
+
                         QgsMessageLog.logMessage(f"Déciles calculés avec succès", "Top'Eau", Qgis.Info)
                     else:
                         QgsMessageLog.logMessage(f"Aucune valeur valide pour le calcul des déciles", "Top'Eau",
@@ -802,6 +817,7 @@ class TraitementWidget(QDialog, form_traitement):
             except Exception as decile_error:
                 QgsMessageLog.logMessage(f"Erreur lors du calcul des déciles : {str(decile_error)}", "Top'Eau",
                                              Qgis.Warning)
+
 
             # 4.2.3. récupération de la géométrie du polygone correspondant à la zone d'étude
             # instauration d'une variable qui servira pour la récupération de la géométrie en WKT
@@ -1631,3 +1647,83 @@ class TraitementWidget(QDialog, form_traitement):
             QgsMessageLog.logMessage(f"Erreur lors de la récupération des rasters: {str(e)}", "Top'Eau", Qgis.Warning)
 
         return rasters
+
+    # fonction permettant l'affichage de la fenêtre liée à la datavisualisation
+    def lance_fenetre_graph(self):
+        self.graph_window = VisuWindow(parent_widget=self)
+        self.graph_window.exec_()
+
+
+class VisuWindow(QDialog, form_graph):
+    def __init__(self, parent_widget=None):
+        QDialog.__init__(self)
+
+        # Stocker la référence au widget parent qui contient les déciles
+        self.parent_widget = parent_widget
+
+        # création de l'interface de la fenêtre QGIS
+        self.setupUi(self)
+        # ajustement de la taille de la fenêtre pour qu'elle soit fixe
+        #self.setFixedSize(600, 400)
+
+        # nom donné à la fenêtre
+        self.setWindowTitle("Top'Eau - Visualisation des statistiques liées aux données eau")
+
+        # Bouton "OK / Annuler"
+        self.terminer.rejected.connect(self.reject)
+
+        # connexion de la barre de progression
+        self.progressBar.setValue(0)
+
+        # Bouton "Visualiser les déciles" - passer l'instance qui contient les déciles
+        self.visuDeciles.clicked.connect(self.creer_graphique_deciles)
+
+        # instauration de variables relatives à la création de l'interface graphiques
+        layout = self.findChild(QVBoxLayout, 'layoutGraph')
+        self.canvas = FigureCanvas(Figure())
+        layout.addWidget(self.canvas)
+
+    def creer_graphique_deciles(self):
+
+        # récupération des attributs parents
+        if (self.parent_widget and
+                hasattr(self.parent_widget, 'deciles_calcules') and
+                self.parent_widget.deciles_calcules):
+
+            deciles_dict = self.parent_widget.deciles_calcules
+
+            # extraction des valeurs des déciles
+            valeurs_deciles = []
+            for i in range(10, 100, 10):
+                key = f'decile_{i}'
+                if key in deciles_dict:
+                    valeurs_deciles.append(deciles_dict[key])
+
+                    # connexion de la barre de progression
+                    self.progressBar.setValue(50)
+
+                else:
+                    valeurs_deciles.append(0)
+
+            # création du graphique avec matplotlib
+            df = pd.DataFrame({
+                'Décile': [f'D{i}' for i in range(1, 10)],
+                'Valeur': valeurs_deciles
+            })
+
+            fig, ax = plt.subplots(figsize=(5, 3))
+            sns.barplot(data=df, x='Décile', y='Valeur', ax=ax)
+            ax.set_title('Distribution des déciles pour la zone d\'étude')
+            ax.set_xlabel('Déciles')
+            ax.set_ylabel('Valeur (m)')
+
+            self.canvas.figure = fig
+            self.canvas.draw()
+
+            # connexion de la barre de progression
+            self.progressBar.setValue(100)
+
+            QgsMessageLog.logMessage("Graphique des déciles créé avec succès", "Top'Eau", Qgis.Info)
+        else:
+            QgsMessageLog.logMessage("Aucun décile calculé disponible", "Top'Eau", Qgis.Warning)
+
