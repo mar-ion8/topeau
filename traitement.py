@@ -86,11 +86,9 @@ class TraitementWidget(QDialog, form_traitement):
 
         # association de filtres à la sélection de couches dans le projet QGIS
         self.inputRaster_2.setFilters(
-            QgsMapLayerProxyModel.RasterLayer |
-            QgsMapLayerProxyModel.PluginLayer
+            QgsMapLayerProxyModel.RasterLayer
         )
         self.inputVecteur_2.setFilters(
-            QgsMapLayerProxyModel.VectorLayer |
             QgsMapLayerProxyModel.PolygonLayer
         )
 
@@ -930,22 +928,48 @@ class TraitementWidget(QDialog, form_traitement):
 
             # création de la couche géométrique si le Wkb est récupéré
             if geometry_wkb:
-                cursor.execute('''
-                    INSERT INTO zone_etude(nom, emprise, surface_m2, min_parcelle, max_parcelle, moyenne_parcelle, mediane_parcelle, {}) 
-                    VALUES (?, ST_GeomFromWKB(?, ?), ?, ?, ?, ?, ?, {})
-                '''.format(
-                    ', '.join([f'decile_{i}' for i in range(10, 100, 10)]),
-                    ', '.join(['?' for i in range(10, 100, 10)])
-                ), [
-                       self.nomZE.text(),
-                       geometry_wkb,
-                       srid,
-                       surface_ze,
-                       round(self.valeur_min, 2),
-                       round(self.valeur_max, 2),
-                       round(self.valeur_moy, 2),
-                       round(self.valeur_med, 2)
-                   ] + [deciles.get(f'decile_{i}', None) for i in range(10, 100, 10)])
+                # Préparation des colonnes et valeurs pour les déciles
+                colonnes_deciles = [f'decile_{i}' for i in range(10, 100, 10)]
+                valeurs_deciles = [deciles.get(f'decile_{i}', None) for i in range(10, 100, 10)]
+
+                # Construction de la requête SQL
+                colonnes_sql = 'nom, emprise, surface_m2, min_parcelle, max_parcelle, moyenne_parcelle, mediane_parcelle, ' + ', '.join(
+                    colonnes_deciles)
+                placeholders_sql = '?, ?, ?, ?, ?, ?, ?, ' + ', '.join(['?' for _ in colonnes_deciles])
+
+                # Valeurs à insérer
+                valeurs_insertion = [
+                                        self.nomZE.text(),
+                                        geometry_wkb,
+                                        surface_ze,
+                                        round(self.valeur_min, 2),
+                                        round(self.valeur_max, 2),
+                                        round(self.valeur_moy, 2),
+                                        round(self.valeur_med, 2)
+                                    ] + valeurs_deciles
+
+                # Choix de la méthode d'insertion selon la disponibilité de SpatiaLite
+                if self.spatialite_loaded:
+                    # Avec SpatiaLite
+                    cursor.execute(f'''
+                                INSERT INTO zone_etude({colonnes_sql}) 
+                                VALUES (?, ST_GeomFromWKB(?, ?), ?, ?, ?, ?, ?, {', '.join(['?' for _ in colonnes_deciles])})
+                            ''', [
+                        self.nomZE.text(),
+                        geometry_wkb,
+                        srid,
+                        surface_ze,
+                        round(self.valeur_min, 2),
+                        round(self.valeur_max, 2),
+                        round(self.valeur_moy, 2),
+                        round(self.valeur_med, 2)
+                    ] + valeurs_deciles)
+                else:
+                    # Sans SpatiaLite - insertion directe du WKB
+                    cursor.execute(f'''
+                                INSERT INTO zone_etude({colonnes_sql}) 
+                                VALUES ({placeholders_sql})
+                            ''', valeurs_insertion)
 
             # 4.4.2. création de la table "hauteur_eau"
             # NB : l'insertion des données se fait dans une fonction dédiée car ce sont des données récupérées en fonction
@@ -1286,7 +1310,90 @@ class TraitementWidget(QDialog, form_traitement):
     
                         # 6. nettoyage : retirer la couche du projet (on n’en a plus besoin)
                         proj.removeMapLayer(rlayer.id())
-    
+
+                    except Exception as e:
+                        QgsMessageLog.logMessage(f"Échec injection style QML : {e}", "Top'Eau", Qgis.Warning)
+
+
+                    qml_ze = os.path.join(os.path.dirname(__file__), 'style', 'style_ze.qml')
+                    try:
+                        # 1. chargement de la couche zone_etude depuis le GeoPackage
+                        uri = f"{gpkg_path}|layername=zone_etude"
+                        rZE = QgsVectorLayer(uri, 'zone_etude', 'ogr')
+                        if not rZE.isValid():
+                            raise ValueError(f"Impossible de charger {uri} comme QgsVectorLayer")
+
+                        # 2. enregistrement temporairement dans le projet (nécessaire pour saveStyleToDatabase)
+                        proj = QgsProject.instance()
+                        proj.addMapLayer(rZE, False)
+
+                        # 3. liste des sous-couches GDAL
+                        QgsMessageLog.logMessage(
+                            f"Couche zone_etude chargée: {rZE.featureCount()} entités",
+                            "Top'Eau", Qgis.Info
+                        )
+
+                        # 4. chargement du QML et application à la couche (pour être sûr que le style est valide)
+                        rZE.loadNamedStyle(qml_ze)
+                        rZE.triggerRepaint()
+
+                        # 5. sauvegarde dans la table layer_styles du GPKG
+                        err = rZE.saveStyleToDatabase(
+                            'default',  # nom du style
+                            'Style embarqué',  # description
+                            True,  # use as default
+                            None  # on passe None : QGIS reprendra le style en mémoire
+                        )
+                        if err:
+                            QgsMessageLog.logMessage(f"Erreur saveStyleToDatabase pour zone_etude : {err}", "Top'Eau",
+                                                     Qgis.Warning)
+                        else:
+                            QgsMessageLog.logMessage(f"Symbologie embarquée dans zone_etude", "Top'Eau", Qgis.Info)
+
+                        # 6. nettoyage : retirer la couche du projet (on n’en a plus besoin)
+                        proj.removeMapLayer(rZE.id())
+
+                    except Exception as e:
+                        QgsMessageLog.logMessage(f"Échec injection style QML : {e}", "Top'Eau", Qgis.Warning)
+
+                    qml_hauteur = os.path.join(os.path.dirname(__file__), 'style', 'style_hauteureau.qml')
+                    try:
+                        # 1. chargement de la couche hauteur_eau depuis le GeoPackage
+                        uri = f"{gpkg_path}|layername=hauteur_eau"
+                        rHauteur = QgsVectorLayer(uri, 'hauteur_eau', 'ogr')
+                        if not rHauteur.isValid():
+                            raise ValueError(f"Impossible de charger {uri} comme QgsVectorLayer")
+
+                        # 2. enregistrement temporairement dans le projet (nécessaire pour saveStyleToDatabase)
+                        proj = QgsProject.instance()
+                        proj.addMapLayer(rHauteur, False)
+
+                        # 3. liste des sous-couches GDAL
+                        QgsMessageLog.logMessage(
+                            f"Couche zone_etude chargée: {rHauteur.featureCount()} entités",
+                            "Top'Eau", Qgis.Info
+                        )
+
+                        # 4. chargement du QML et application à la couche (pour être sûr que le style est valide)
+                        rHauteur.loadNamedStyle(qml_hauteur)
+                        rHauteur.triggerRepaint()
+
+                        # 5. sauvegarde dans la table layer_styles du GPKG
+                        err = rHauteur.saveStyleToDatabase(
+                            'default',  # nom du style
+                            'Style embarqué',  # description
+                            True,  # use as default
+                            None  # on passe None : QGIS reprendra le style en mémoire
+                        )
+                        if err:
+                            QgsMessageLog.logMessage(f"Erreur saveStyleToDatabase pour hauteur_eau : {err}", "Top'Eau",
+                                                     Qgis.Warning)
+                        else:
+                            QgsMessageLog.logMessage(f"Symbologie embarquée dans hauteur_eau", "Top'Eau", Qgis.Info)
+
+                        # 6. nettoyage : retirer la couche du projet (on n’en a plus besoin)
+                        proj.removeMapLayer(rHauteur.id())
+
                     except Exception as e:
                         QgsMessageLog.logMessage(f"Échec injection style QML : {e}", "Top'Eau", Qgis.Warning)
     
