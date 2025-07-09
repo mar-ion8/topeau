@@ -25,5 +25,29 @@
 
 <p align="justify">Le Plugin a été pensé selon une logique de séparation des étapes en interfaces. Ainsi, <p>
 
-## 
+## Utilisation
+
+### Simulation de niveaux d'eau au sein d'une zone d'étude
+
+<p align="justify">Métiers concernés : gestion de l'eau, gestion de la biodiversité, <p>
+
+### Analyse biodiversité
+
+<p align="justify">Métiers concernés : gestion de la biodiversité, ingénieur biodiversité, <p>
+
+### Indicateurs et variables hydriques
+
+<p align="justify">Métiers concernés : gestion de l'eau,  <p>
+
+### Aspect technique
+
+<p align="justify">Métiers concernés : administrateur SIG, technicien SIG, développeur, géomaticien, informaticien,  <p>
+
+## Annexes
+
+### Collaborateurs
+
+### Sources 
+
+
 
