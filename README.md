@@ -1,4 +1,4 @@
-# Documentation - Plugin Top'Eau ![logo](.../icon.png)
+# Documentation - Plugin Top'Eau ![logo](../icon.png)
 
 ## Présentation du Plugin Top'Eau
 
