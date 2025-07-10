@@ -31,7 +31,8 @@ from .traitement import *
 from .imports import *
 #import du fichier traitement concernant l'analyse biodiversité
 from .biodiv import *
-
+# import du fichier traitement concernant l'analyse gestion de l'eau
+from .calcul import *
 # import du fichier à propos
 from .about import *
 
@@ -101,8 +102,11 @@ class TopEau:
         # Bouton Calculs gestion eau
         self.actionCalculs = QAction("3.b Analyse fine : indicateur pour la gestion de l'eau", self.interface.mainWindow())
         self.actionCalculs.triggered.connect(self.openCalculs)
+        # Bouton Visualisation stats eau
+        #self.actionCalculs = QAction("Bonus : visualisation des statistiques", self.interface.mainWindow())
+        #self.actionCalculs.triggered.connect(self.openVisu)
         # Bouton Notice
-        self.actionHelp = QAction("Notice", self.interface.mainWindow())
+        self.actionHelp = QAction("Aide", self.interface.mainWindow())
         self.actionHelp.triggered.connect(self.openHelp)
         # Bouton À propos
         self.actionAbout = QAction("À propos", self.interface.mainWindow())
@@ -141,7 +145,16 @@ class TopEau:
         print("ok")
 
     def openCalculs(self):
+        calculs = CalculWidget(self.interface)
+        result = calculs.exec_()
         print("ok")
+
+    """
+    def openVisu(self):
+        visu = VisuWidget(self.interface)
+        result = visu.exec_()
+        print("ok")
+    """
 
     def openHelp(self):
         # accès au dossier « notice » et au fichier notice.pdf pour obtenir de l'aide avec l'utilisation plugin
