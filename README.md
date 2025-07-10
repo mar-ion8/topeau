@@ -35,17 +35,42 @@
 
 <p align="justify">Métiers concernés : gestion de la biodiversité, ingénieur biodiversité, <p>
 
+#### Données en entrée
+
+
+
+#### Données en sortie
+
+
 ### Indicateurs et variables hydriques
 
 <p align="justify">Métiers concernés : gestion de l'eau,  <p>
 
+#### Données en entrée
+
+
+
+#### Données en sortie
+
 ### Aspect technique
 
-<p align="justify">Métiers concernés : administrateur SIG, technicien SIG, développeur, géomaticien, informaticien,  <p>
+<p align="justify"> <strong>Métiers concernés :</strong> administrateur SIG, technicien SIG, développeur, géomaticien, informaticien,  <p>
+
+#### Langages 
+
+#### Arborescence et fichiers de code 
+
+
+
+#### Modules Python
 
 ## Annexes
 
 ### Collaborateurs
+
+- <p align="justify"><strong>Julien Ancelin :</strong> encadrement technique, contrôle des modifications et des données produites, participation à l'écriture des fichiers de code<p>
+- <p align="justify"><strong>Romain Monjaret :</strong> aide apportée pour la gestion de certaines erreurs, séparation des fichiers de code, ressource en documentation/tutoriels Git, GitHub, Python<p>
+- <p align="justify"><strong>Olivier Schmit :</strong> contrôle des métadonnées<p>
 
 ### Sources 
 
