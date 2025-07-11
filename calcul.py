@@ -43,7 +43,7 @@ class CalculWidget(QDialog, form_traitement):
         self.calcMois.clicked.connect(self.calculs_mensuels)
 
         # Bouton "Calculer mes données périodiques"
-        # self.calcPeriode.clicked.connect(self.calculs_periodiques)
+        self.calcPeriode.clicked.connect(self.calculs_periodiques)
 
         # connexion de la barre de progression
         self.progressBar.setValue(0)
@@ -212,7 +212,7 @@ class CalculWidget(QDialog, form_traitement):
         except Exception as e:
             QgsMessageLog.logMessage(f"Erreur lors de la suppression de la table : {e}", "Top'Eau", Qgis.Warning)
 
-        # 2.2. création de la nouvelle table "donnees_journalieres"
+        # 2.2. création de la nouvelle table "donnees_mensuelles"
         try:
             cursor.execute('''
                         CREATE TABLE IF NOT EXISTS donnees_mensuelles(
@@ -295,6 +295,123 @@ class CalculWidget(QDialog, form_traitement):
                                 WHERE m.niveau_eau IS NOT NULL
                                 GROUP BY mois
                                 ORDER BY m.date''')
+
+            conn.commit()
+
+            conn.close()
+
+            self.progressBar.setValue(100)
+
+            QgsMessageLog.logMessage(f"Table créée", "Top'Eau", Qgis.Info)
+
+        except Exception as e:
+            QgsMessageLog.logMessage(f"Erreur lors de l'insertion des données : {e}", "Top'Eau",
+                                     Qgis.Warning)
+
+
+    def calculs_periodiques(self):
+
+        # récupération du GPKG sélectionné par l'utilisateur
+        selected_GPKG = self.inputGPKG.filePath()
+        if not selected_GPKG or not os.path.exists(selected_GPKG):
+            QMessageBox.warning(self, "Erreur", "Veuillez sélectionner un fichier GPKG valide.")
+            return None
+
+        # 1. connexion SQLite au GPKG
+
+        conn = sqlite3.connect(selected_GPKG)
+        cursor = conn.cursor()
+
+        # 2.1. suppression de la table donnees_periodiques si elle existe
+        try:
+            cursor.execute("DROP TABLE IF EXISTS donnees_periodiques")
+            QgsMessageLog.logMessage("Table donnees_periodiques supprimée si elle existait", "Top'Eau", Qgis.Info)
+        except Exception as e:
+            QgsMessageLog.logMessage(f"Erreur lors de la suppression de la table : {e}", "Top'Eau", Qgis.Warning)
+
+        # 2.2. création de la nouvelle table "donnees_periodiques"
+        try:
+            cursor.execute('''
+                                CREATE TABLE IF NOT EXISTS donnees_periodiques(
+                                    periode STRING,
+                                    moyenne_surface_eau_m2 REAL,
+                                    moyenne_surface_eau_sup_10cm REAL,
+                                    stress_inondation REAL,
+                                    stress_hydrique REAL,
+                                    pourcentage_inondation INTEGER,
+                                    pourcentage_inondation_sup_10cm INTEGER,
+                                    nbr_jours_sup_point_bas INTEGER,
+                                    nbr_jours_sup_point_bas_sup10cm INTEGER
+                                )
+                            ''')
+
+        except Exception as e:
+            QgsMessageLog.logMessage(f"Erreur lors de la création de la table : {e}", "Top'Eau", Qgis.Warning)
+
+        # 3.1. récupération du premier décile depuis la table zone_etude
+        point_bas = None
+        try:
+            cursor.execute('''SELECT decile_10 FROM zone_etude''')
+            point_bas_result = cursor.fetchone()
+            if point_bas_result:
+                point_bas = point_bas_result[0]
+            else:
+                QgsMessageLog.logMessage(f"'point_bas' ne retourne aucune valeur", "Top'Eau",
+                                         Qgis.Warning)
+
+        except Exception as e:
+            QgsMessageLog.logMessage(f"Erreur lors de la requête decile sur la table zone_etude: {e}", "Top'Eau",
+                                     Qgis.Warning)
+
+        # 3.2. récupération de la surface totale depuis la table zone_etude pour calculer les pourcentages
+        surface_ze = None
+        try:
+            cursor.execute('''SELECT surface_m2 FROM zone_etude''')
+            surface_ze_result = cursor.fetchone()
+            if surface_ze_result:
+                surface_ze = surface_ze_result[0]
+            else:
+                QgsMessageLog.logMessage(f"'surface_m2' ne retourne aucune valeur", "Top'Eau",
+                                         Qgis.Warning)
+
+        except Exception as e:
+            QgsMessageLog.logMessage(f"Erreur lors de la requête surface sur la table zone_etude: {e}", "Top'Eau",
+                                     Qgis.Warning)
+
+        # 3.3. requêtage pour obtenir les valeurs à implémenter/calculer depuis hauteur_eau et zone_etude dans la table
+        try:
+            cursor.execute(f'''
+                            INSERT INTO donnees_periodiques
+                                    SELECT 
+                                            CASE 
+                                                WHEN (SUBSTRING(m.date, 6, 2) = '12' AND CAST(SUBSTRING(m.date, 9, 2) AS INTEGER) >= 16) 
+                                                     OR SUBSTRING(m.date, 6, 2) IN ('01', '02') 
+                                                     OR (SUBSTRING(m.date, 6, 2) = '03' AND CAST(SUBSTRING(m.date, 9, 2) AS INTEGER) <= 15) 
+                                                     THEN 'Hiver'
+                                                WHEN (SUBSTRING(m.date, 6, 2) = '03' AND CAST(SUBSTRING(m.date, 9, 2) AS INTEGER) >= 16) 
+                                                     OR SUBSTRING(m.date, 6, 2) IN ('04', '05') 
+                                                     THEN 'Printemps'
+                                                WHEN SUBSTRING(m.date, 6, 2) IN ('06', '07', '08', '09') 
+                                                     THEN 'Eté'
+                                                WHEN SUBSTRING(m.date, 6, 2) IN ('10', '11') 
+                                                     OR (SUBSTRING(m.date, 6, 2) = '12' AND CAST(SUBSTRING(m.date, 9, 2) AS INTEGER) <= 15) 
+                                                     THEN 'Automne'
+                                            END AS periode,
+                                            ROUND(AVG(h.surface_eau_m2), 2) AS moyenne_surface_eau_m2,
+                                            ROUND(AVG(h.classe_3 + h.classe_4 + h.classe_5 + h.classe_6 + h.classe_7), 2) 
+                                                AS moyenne_surface_eau_sup_10cm,
+                                            ROUND(AVG(m.niveau_eau) - '{point_bas}', 2) AS stress_inondation,
+                                            ROUND(('{point_bas}' - 0.42) - AVG(m.niveau_eau), 2) AS stress_hydrique,
+                                            (ROUND(AVG(h.surface_eau_m2), 2) / '{surface_ze}') * 100 AS pourcentage_inondation,
+                                            (ROUND(AVG(h.classe_3 + h.classe_4 + h.classe_5 + h.classe_6 + h.classe_7), 2) / '{surface_ze}') * 100 
+                                                AS pourcentage_inondation_sup_10cm,
+                                            COUNT(CASE WHEN m.niveau_eau > '{point_bas}' THEN 1 END) AS nbr_jours_sup_point_bas,
+                                            COUNT(CASE WHEN m.niveau_eau > ('{point_bas}'+0.10) THEN 1 END) AS nbr_jours_sup_point_bas_sup10cm
+                                        FROM mesure m
+                                        LEFT JOIN hauteur_eau h ON REPLACE(m.niveau_eau, ' m', '') = h.niveau_eau
+                                        WHERE m.niveau_eau IS NOT NULL
+                                        GROUP BY periode
+                                        ORDER BY m.date''')
 
             conn.commit()
 
