@@ -118,9 +118,7 @@ class CalculWidget(QDialog, form_traitement):
             # jointure basée sur le niveau d'eau
             cursor.execute('''
                    SELECT
-                        m.date,
-                        m.niveau_eau,
-                        h.surface_eau_m2 AS surface_en_eau,
+                        m.date, m.niveau_eau, h.surface_eau_m2 AS surface_en_eau,
                         (h.classe_3 + h.classe_4 + h.classe_5 + h.classe_6 + h.classe_7) AS surface_sup_10cm
                    FROM
                         mesure m
@@ -161,12 +159,13 @@ class CalculWidget(QDialog, form_traitement):
 
                 # création de variables effectuant les calculs pour insérer les données dans la table
                 niveau_point = niveau_mesure / point_bas
-                stress_hydrique = niveau_mesure - (point_bas - 0.42)
+                stress_hydrique = niveau_mesure - (point_bas - 0.42) #valeur '0.42' définie par Olivier Gore (EPMP, Suivi de la biodiversité)
                 stress_inondation = niveau_mesure - point_bas
 
                 cursor.execute('''
                             INSERT INTO donnees_journalieres(
-                                date, niveau_eau, point_bas, surface_en_eau, surface_sup_10cm, niveau_eau_div_point_bas, stress_hydrique, stress_inondation)
+                                date, niveau_eau, point_bas, surface_en_eau, surface_sup_10cm, niveau_eau_div_point_bas, 
+                                stress_hydrique, stress_inondation)
                             VALUES(?, ?, ?, ?, ?, ?, ?, ?)''', (
                     date_mesure,
                     niveau_mesure,
