@@ -879,8 +879,8 @@ class TraitementWidget(QDialog, form_traitement):
             table_creation_sql = '''
                         CREATE TABLE zone_etude (
                             id INTEGER PRIMARY KEY AUTOINCREMENT, 
-                            nom TEXT,
                             emprise GEOMETRY,
+                            nom TEXT,
                             surface_m2 REAL,
                             min_parcelle REAL,
                             max_parcelle REAL,
@@ -933,14 +933,14 @@ class TraitementWidget(QDialog, form_traitement):
                 valeurs_deciles = [deciles.get(f'decile_{i}', None) for i in range(10, 100, 10)]
 
                 # Construction de la requête SQL
-                colonnes_sql = 'nom, emprise, surface_m2, min_parcelle, max_parcelle, moyenne_parcelle, mediane_parcelle, ' + ', '.join(
+                colonnes_sql = 'emprise, nom, surface_m2, min_parcelle, max_parcelle, moyenne_parcelle, mediane_parcelle, ' + ', '.join(
                     colonnes_deciles)
                 placeholders_sql = '?, ?, ?, ?, ?, ?, ?, ' + ', '.join(['?' for _ in colonnes_deciles])
 
                 # Valeurs à insérer
                 valeurs_insertion = [
-                                        self.nomZE.text(),
                                         geometry_wkb,
+                                        self.nomZE.text(),
                                         surface_ze,
                                         round(self.valeur_min, 2),
                                         round(self.valeur_max, 2),
@@ -953,11 +953,11 @@ class TraitementWidget(QDialog, form_traitement):
                     # Avec SpatiaLite
                     cursor.execute(f'''
                                 INSERT INTO zone_etude({colonnes_sql}) 
-                                VALUES (?, ST_GeomFromWKB(?, ?), ?, ?, ?, ?, ?, {', '.join(['?' for _ in colonnes_deciles])})
+                                VALUES (ST_GeomFromWKB(?, ?), ?, ?, ?, ?, ?, ?, {', '.join(['?' for _ in colonnes_deciles])})
                             ''', [
-                        self.nomZE.text(),
                         geometry_wkb,
                         srid,
+                        self.nomZE.text(),
                         surface_ze,
                         round(self.valeur_min, 2),
                         round(self.valeur_max, 2),
@@ -977,6 +977,7 @@ class TraitementWidget(QDialog, form_traitement):
             cursor.execute('''
                 CREATE TABLE hauteur_eau (
                     id INTEGER PRIMARY KEY AUTOINCREMENT, 
+                    geom GEOMETRY,
                     niveau_eau REAL,
                     nom TEXT,
                     surface_eau_m2 REAL,
@@ -988,7 +989,6 @@ class TraitementWidget(QDialog, form_traitement):
                     classe_5 REAL,
                     classe_6 REAL,
                     classe_7 REAL,
-                    geom GEOMETRY,
                     nom_fichier TEXT
                 )
             ''')
@@ -1537,11 +1537,12 @@ class TraitementWidget(QDialog, form_traitement):
                     # insertion des données avec SpatiaLite
                     cursor.execute('''
                            INSERT INTO hauteur_eau 
-                           (niveau_eau, nom, surface_eau_m2, volume_eau_m3,
-                           classe_1, classe_2, classe_3, classe_4, classe_5, classe_6, classe_7,
-                           geom, nom_fichier) 
-                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ST_GeomFromWKB(?, ?), ?)
+                           (geom, niveau_eau, nom, surface_eau_m2, volume_eau_m3,
+                           classe_1, classe_2, classe_3, classe_4, classe_5, classe_6, classe_7, nom_fichier) 
+                           VALUES (ST_GeomFromWKB(?, ?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                        ''', (
+                        geom_raster_wkb,
+                        2154,
                         round(self.current_level, 2),
                         self.nomZE.text(),
                         round(surface_totale, 2),
@@ -1553,19 +1554,18 @@ class TraitementWidget(QDialog, form_traitement):
                         round(classe_5_surf, 2),
                         round(classe_6_surf, 2),
                         round(classe_7_surf, 2),
-                        geom_raster_wkb,
-                        2154,
                         raster_name
                     ))
                 else:
                     # insertion directe avec les fonctions GPKG natives (géométrie en blob)
                     cursor.execute('''
                            INSERT INTO hauteur_eau 
-                           (niveau_eau, nom, surface_eau_m2, volume_eau_m3,
+                           (geom,niveau_eau, nom, surface_eau_m2, volume_eau_m3,
                            classe_1, classe_2, classe_3, classe_4, classe_5, classe_6, classe_7,
-                           geom, nom_fichier) 
+                        nom_fichier) 
                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                        ''', (
+                        geom_raster_wkb,
                         round(self.current_level, 2),
                         self.nomZE.text(),
                         round(surface_totale, 2),
@@ -1577,7 +1577,6 @@ class TraitementWidget(QDialog, form_traitement):
                         round(classe_5_surf, 2),
                         round(classe_6_surf, 2),
                         round(classe_7_surf, 2),
-                        geom_raster_wkb,
                         raster_name
                     ))
 
