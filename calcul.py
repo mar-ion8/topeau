@@ -83,7 +83,6 @@ class CalculWidget(QDialog, form_traitement):
                     point_bas REAL,
                     surface_en_eau REAL,
                     surface_sup_10cm REAL,
-                    niveau_eau_div_point_bas REAL,
                     stress_hydrique REAL,
                     stress_inondation REAL
                 )
@@ -158,21 +157,18 @@ class CalculWidget(QDialog, form_traitement):
                 surface_sup_10cm = float(donnee[3])  # idem
 
                 # création de variables effectuant les calculs pour insérer les données dans la table
-                niveau_point = niveau_mesure / point_bas
-                stress_hydrique = niveau_mesure - (point_bas - 0.42) #valeur '0.42' définie par Olivier Gore (EPMP, Suivi de la biodiversité)
+                stress_hydrique = (point_bas - 0.42) - niveau_mesure #valeur '0.42' définie par Olivier Gore (EPMP, Suivi de la biodiversité)
                 stress_inondation = niveau_mesure - point_bas
 
                 cursor.execute('''
                             INSERT INTO donnees_journalieres(
-                                date, niveau_eau, point_bas, surface_en_eau, surface_sup_10cm, niveau_eau_div_point_bas, 
-                                stress_hydrique, stress_inondation)
-                            VALUES(?, ?, ?, ?, ?, ?, ?, ?)''', (
+                                date, niveau_eau, point_bas, surface_en_eau, surface_sup_10cm, stress_hydrique, stress_inondation)
+                            VALUES(?, ?, ?, ?, ?, ?, ?)''', (
                     date_mesure,
                     niveau_mesure,
                     point_bas,
                     surface_eau,
                     round(surface_sup_10cm, 2),
-                    round(niveau_point, 2),
                     round(stress_hydrique, 2),
                     round(stress_inondation, 2)
                     )
