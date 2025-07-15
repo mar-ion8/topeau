@@ -1666,7 +1666,7 @@ class TraitementWidget(QDialog, form_traitement):
             # 5.1. création d'un groupe pour organiser les couches
             nom_ze = self.nomZE.text()
             root = QgsProject.instance().layerTreeRoot()
-            group = root.addGroup(f"Top'Eau - {nom_ze}")
+            group = root.insertGroup(0, f"Top'Eau - {nom_ze}")
 
             # 5.2. chargement des tables attributaires
             tables_attributaires = ['zone_etude', 'hauteur_eau', 'mesure', 'metadata_md1', 'metadata_md2']
