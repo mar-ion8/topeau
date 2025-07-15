@@ -52,6 +52,7 @@ class CalculWidget(QDialog, form_traitement):
         QDialog.reject(self)
         return
 
+    # fonction permettant de créer une table récupérant/calculant des valeurs journalières selon les données insérées en 2.
     def calculs_journaliers(self):
 
         # récupération du GPKG sélectionné par l'utilisateur
@@ -61,7 +62,6 @@ class CalculWidget(QDialog, form_traitement):
             return None
 
         # 1. connexion SQLite au GPKG
-
         conn = sqlite3.connect(selected_GPKG)
         cursor = conn.cursor()
 
@@ -84,7 +84,9 @@ class CalculWidget(QDialog, form_traitement):
                     surface_en_eau REAL,
                     surface_sup_10cm REAL,
                     stress_hydrique REAL,
-                    stress_inondation REAL
+                    stress_inondation REAL,
+                    pourcentage_inondation REAL,
+                    pourcentage_inondation_sup_10cm REAL
                 )
             ''')
 
@@ -103,8 +105,7 @@ class CalculWidget(QDialog, form_traitement):
                 point_bas = point_bas_result[0]
                 #print(f"point_bas extrait: {point_bas} (type: {type(point_bas)})")
             else:
-                QgsMessageLog.logMessage(f"'point_bas' ne retourne aucune valeur", "Top'Eau",
-                                         Qgis.Warning)
+                QgsMessageLog.logMessage(f"'point_bas' ne retourne aucune valeur", "Top'Eau", Qgis.Warning)
 
             self.progressBar.setValue(25)
 
@@ -112,13 +113,31 @@ class CalculWidget(QDialog, form_traitement):
             QgsMessageLog.logMessage(f"Erreur lors de la requête sur la table zone_etude: {e}", "Top'Eau",
                                          Qgis.Warning)
 
-        # 3.2. requête effectuant la jointure entre mesure & hauteur_eau pour récupérer les dates, niveaux d'eau et surfaces
+        # 3.2. récupération de la surface totale depuis la table zone_etude pour calculer les pourcentages
+        surface_ze = None
+        try:
+            cursor.execute('''SELECT surface_m2 FROM zone_etude''')
+            surface_ze_result = cursor.fetchone()
+            if surface_ze_result:
+                surface_ze = surface_ze_result[0]
+            else:
+                QgsMessageLog.logMessage(f"'surface_m2' ne retourne aucune valeur", "Top'Eau",
+                                             Qgis.Warning)
+
+        except Exception as e:
+            QgsMessageLog.logMessage(f"Erreur lors de la requête surface sur la table zone_etude: {e}", "Top'Eau",
+                                         Qgis.Warning)
+
+        # 3.3. requête effectuant la jointure entre mesure & hauteur_eau pour récupérer les dates, niveaux d'eau et surfaces
         try:
             # jointure basée sur le niveau d'eau
-            cursor.execute('''
+            cursor.execute(f'''
                    SELECT
                         m.date, m.niveau_eau, h.surface_eau_m2 AS surface_en_eau,
-                        (h.classe_3 + h.classe_4 + h.classe_5 + h.classe_6 + h.classe_7) AS surface_sup_10cm
+                        (h.classe_3 + h.classe_4 + h.classe_5 + h.classe_6 + h.classe_7) AS surface_sup_10cm,
+                        ROUND((h.surface_eau_m2 / '{surface_ze}') * 100 , 2) AS pourcentage_inondation,
+                        ROUND(((h.classe_3 + h.classe_4 + h.classe_5 + h.classe_6 + h.classe_7) / '{surface_ze}') * 100 , 2) 
+                                        AS pourcentage_inondation_sup_10cm
                    FROM
                         mesure m
                    JOIN
@@ -143,9 +162,7 @@ class CalculWidget(QDialog, form_traitement):
             conn.close()
             return
 
-
         # 4. insertion des données au sein de la table de données journalières
-
         try:
             compteur_insertions = 0
             # insertion des données sous forme de boucle pour permettre l'insertion de toutes les dates et des valeurs associées
@@ -155,6 +172,8 @@ class CalculWidget(QDialog, form_traitement):
                 niveau_mesure = float(niveau_str)  # conversion du niveau en float pour avoir un nombre
                 surface_eau = float(donnee[2])  # conversion du niveau en float pour être sûr d'avoir un nombre
                 surface_sup_10cm = float(donnee[3])  # idem
+                pourcentage_inondation = float(donnee[4])
+                pourcentage_inondation_sup_10cm = float(donnee[5])
 
                 # création de variables effectuant les calculs pour insérer les données dans la table
                 stress_hydrique = (point_bas - 0.42) - niveau_mesure #valeur '0.42' définie par Olivier Gore (EPMP, Suivi de la biodiversité)
@@ -162,36 +181,42 @@ class CalculWidget(QDialog, form_traitement):
 
                 cursor.execute('''
                             INSERT INTO donnees_journalieres(
-                                date, niveau_eau, point_bas, surface_en_eau, surface_sup_10cm, stress_hydrique, stress_inondation)
-                            VALUES(?, ?, ?, ?, ?, ?, ?)''', (
+                                date, niveau_eau, point_bas, surface_en_eau, surface_sup_10cm, stress_hydrique, 
+                                stress_inondation, pourcentage_inondation, pourcentage_inondation_sup_10cm)
+                            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)''', (
                     date_mesure,
                     niveau_mesure,
                     point_bas,
                     surface_eau,
                     round(surface_sup_10cm, 2),
                     round(stress_hydrique, 2),
-                    round(stress_inondation, 2)
+                    round(stress_inondation, 2),
+                    pourcentage_inondation,
+                    pourcentage_inondation_sup_10cm
                     )
                 )
                 compteur_insertions += 1
 
             conn.commit()
-
-            # vérification du fonctionnement de l'insertion
-            cursor.execute("SELECT COUNT(*) FROM donnees_journalieres")
-            count = cursor.fetchone()[0]
-            print(f"Nombre de lignes insérées: {count}")
-
             conn.close()
 
             self.progressBar.setValue(100)
-
             QgsMessageLog.logMessage(f"Table créée", "Top'Eau", Qgis.Info)
+
+            # chargement de la table donnees_journalieres
+            layer = self.charger_tables_dans_qgis('donnees_journalieres')
+            if layer:
+                QgsMessageLog.logMessage(f"Table donnees_journalieres chargée dans QGIS", "Top'Eau", Qgis.Info)
+                return layer
+            else:
+                QgsMessageLog.logMessage(f"Erreur lors du chargement de la table dans QGIS", "Top'Eau", Qgis.Warning)
+                return None
 
         except Exception as e:
             QgsMessageLog.logMessage(f"Erreur lors de l'insertion des données : {e}", "Top'Eau",
                                      Qgis.Warning)
 
+    # fonction permettant de créer une table récupérant/calculant des valeurs mensuelles selon les données insérées en 2.
     def calculs_mensuels(self):
 
         # récupération du GPKG sélectionné par l'utilisateur
@@ -201,7 +226,6 @@ class CalculWidget(QDialog, form_traitement):
             return None
 
         # 1. connexion SQLite au GPKG
-
         conn = sqlite3.connect(selected_GPKG)
         cursor = conn.cursor()
 
@@ -221,8 +245,8 @@ class CalculWidget(QDialog, form_traitement):
                             moyenne_surface_eau_sup_10cm REAL,
                             stress_inondation REAL,
                             stress_hydrique REAL,
-                            pourcentage_inondation INTEGER,
-                            pourcentage_inondation_sup_10cm INTEGER,
+                            pourcentage_inondation REAL,
+                            pourcentage_inondation_sup_10cm REAL,
                             nbr_jours_sup_point_bas INTEGER,
                             nbr_jours_sup_point_bas_sup10cm INTEGER
                         )
@@ -285,9 +309,9 @@ class CalculWidget(QDialog, form_traitement):
                                         AS moyenne_surface_eau_sup_10cm,
                                     ROUND(AVG(m.niveau_eau) - '{point_bas}', 2) AS stress_inondation,
                                     ROUND(('{point_bas}' - 0.42) - AVG(m.niveau_eau), 2) AS stress_hydrique,
-                                    (ROUND(AVG(h.surface_eau_m2), 2) / '{surface_ze}') * 100 AS pourcentage_inondation,
-                                    (ROUND(AVG(h.classe_3 + h.classe_4 + h.classe_5 + h.classe_6 + h.classe_7), 2) / '{surface_ze}') * 100 
-                                        AS pourcentage_inondation_sup_10cm,
+                                    ROUND((AVG(h.surface_eau_m2) / '{surface_ze}' * 100), 2) AS pourcentage_inondation,
+                                    ROUND((AVG(h.classe_3 + h.classe_4 + h.classe_5 + h.classe_6 + h.classe_7) / '{surface_ze}') * 100 , 2) 
+                                                AS pourcentage_inondation_sup_10cm,
                                     COUNT(CASE WHEN m.niveau_eau > '{point_bas}' THEN 1 END) AS nbr_jours_sup_point_bas,
                                     COUNT(CASE WHEN m.niveau_eau > ('{point_bas}'+0.10) THEN 1 END) AS nbr_jours_sup_point_bas_sup10cm
                                 FROM mesure m
@@ -297,18 +321,25 @@ class CalculWidget(QDialog, form_traitement):
                                 ORDER BY m.date''')
 
             conn.commit()
-
             conn.close()
 
             self.progressBar.setValue(100)
-
             QgsMessageLog.logMessage(f"Table créée", "Top'Eau", Qgis.Info)
 
+            # chargement de la table donnees_mensuelles
+            layer = self.charger_tables_dans_qgis('donnees_mensuelles')
+            if layer:
+                QgsMessageLog.logMessage(f"Table donnees_mensuelles chargée dans QGIS", "Top'Eau", Qgis.Info)
+                return layer
+            else:
+                QgsMessageLog.logMessage(f"Erreur lors du chargement de la table dans QGIS", "Top'Eau", Qgis.Warning)
+                return None
+
         except Exception as e:
-            QgsMessageLog.logMessage(f"Erreur lors de l'insertion des données : {e}", "Top'Eau",
-                                     Qgis.Warning)
+            QgsMessageLog.logMessage(f"Erreur lors de l'insertion des données : {e}", "Top'Eau", Qgis.Warning)
 
 
+    # fonction permettant de créer une table récupérant/calculant des valeurs journalières selon les données insérées en 2.
     def calculs_periodiques(self):
 
         # récupération du GPKG sélectionné par l'utilisateur
@@ -318,7 +349,6 @@ class CalculWidget(QDialog, form_traitement):
             return None
 
         # 1. connexion SQLite au GPKG
-
         conn = sqlite3.connect(selected_GPKG)
         cursor = conn.cursor()
 
@@ -338,8 +368,8 @@ class CalculWidget(QDialog, form_traitement):
                                     moyenne_surface_eau_sup_10cm REAL,
                                     stress_inondation REAL,
                                     stress_hydrique REAL,
-                                    pourcentage_inondation INTEGER,
-                                    pourcentage_inondation_sup_10cm INTEGER,
+                                    pourcentage_inondation REAL,
+                                    pourcentage_inondation_sup_10cm REAL,
                                     nbr_jours_sup_point_bas INTEGER,
                                     nbr_jours_sup_point_bas_sup10cm INTEGER
                                 )
@@ -356,8 +386,7 @@ class CalculWidget(QDialog, form_traitement):
             if point_bas_result:
                 point_bas = point_bas_result[0]
             else:
-                QgsMessageLog.logMessage(f"'point_bas' ne retourne aucune valeur", "Top'Eau",
-                                         Qgis.Warning)
+                QgsMessageLog.logMessage(f"'point_bas' ne retourne aucune valeur", "Top'Eau", Qgis.Warning)
 
         except Exception as e:
             QgsMessageLog.logMessage(f"Erreur lors de la requête decile sur la table zone_etude: {e}", "Top'Eau",
@@ -379,6 +408,7 @@ class CalculWidget(QDialog, form_traitement):
                                      Qgis.Warning)
 
         # 3.3. requêtage pour obtenir les valeurs à implémenter/calculer depuis hauteur_eau et zone_etude dans la table
+        # NB : les dates délimitant les périodes ont été définies par Olivier Gore
         try:
             cursor.execute(f'''
                             INSERT INTO donnees_periodiques
@@ -402,8 +432,8 @@ class CalculWidget(QDialog, form_traitement):
                                                 AS moyenne_surface_eau_sup_10cm,
                                             ROUND(AVG(m.niveau_eau) - '{point_bas}', 2) AS stress_inondation,
                                             ROUND(('{point_bas}' - 0.42) - AVG(m.niveau_eau), 2) AS stress_hydrique,
-                                            (ROUND(AVG(h.surface_eau_m2), 2) / '{surface_ze}') * 100 AS pourcentage_inondation,
-                                            (ROUND(AVG(h.classe_3 + h.classe_4 + h.classe_5 + h.classe_6 + h.classe_7), 2) / '{surface_ze}') * 100 
+                                            ROUND((AVG(h.surface_eau_m2) / '{surface_ze}' * 100), 2) AS pourcentage_inondation,
+                                        ROUND((AVG(h.classe_3 + h.classe_4 + h.classe_5 + h.classe_6 + h.classe_7) / '{surface_ze}') * 100 , 2) 
                                                 AS pourcentage_inondation_sup_10cm,
                                             COUNT(CASE WHEN m.niveau_eau > '{point_bas}' THEN 1 END) AS nbr_jours_sup_point_bas,
                                             COUNT(CASE WHEN m.niveau_eau > ('{point_bas}'+0.10) THEN 1 END) AS nbr_jours_sup_point_bas_sup10cm
@@ -414,16 +444,79 @@ class CalculWidget(QDialog, form_traitement):
                                         ORDER BY m.date''')
 
             conn.commit()
-
             conn.close()
 
             self.progressBar.setValue(100)
 
             QgsMessageLog.logMessage(f"Table créée", "Top'Eau", Qgis.Info)
 
+            # chargement de la table donnees_periodiques
+            layer = self.charger_tables_dans_qgis('donnees_periodiques')
+            if layer:
+                QgsMessageLog.logMessage(f"Table donnees_periodiques chargée dans QGIS", "Top'Eau", Qgis.Info)
+                return layer
+            else:
+                QgsMessageLog.logMessage(f"Erreur lors du chargement de la table dans QGIS", "Top'Eau", Qgis.Warning)
+                return None
+
         except Exception as e:
-            QgsMessageLog.logMessage(f"Erreur lors de l'insertion des données : {e}", "Top'Eau",
-                                     Qgis.Warning)
+            QgsMessageLog.logMessage(f"Erreur lors de l'insertion des données : {e}", "Top'Eau", Qgis.Warning)
 
 
+    # fonction permettant de charger la table dans QGIS une fois qu'elle a été calculée
+    def charger_tables_dans_qgis(self, table_name = None):
 
+        try:
+            # référence à l'interface QGIS
+            from qgis.utils import iface
+
+            # récupération du GPKG
+            selected_GPKG = self.inputGPKG.filePath()
+
+            # création d'un seul groupe pour organiser les couches dans le projet QGIS
+            root = QgsProject.instance().layerTreeRoot()
+            group_name =  f"Top'Eau - Indicateurs calculés"
+            group = root.findGroup(group_name)
+            if not group:
+                # création du groupe en position 0 (au début) seulement s'il n'existe pas
+                group = root.insertGroup(0, group_name)
+                QgsMessageLog.logMessage(f"Groupe '{group_name}' créé", "Top'Eau", Qgis.Info)
+            else:
+                QgsMessageLog.logMessage(f"Groupe '{group_name}' trouvé, ajout des couches", "Top'Eau", Qgis.Info)
+
+            # définition de la table à charger
+            if table_name:
+                # chargement de la table qui vient d'être créée
+                tables_attributaires = [table_name]
+            else:
+                # si erreur : chargement toutes les tables par défaut
+                tables_attributaires = ['donnees_mensuelles', 'donnees_periodiques', 'donnees_journalieres']
+
+            loaded_layer = None  # stockage de la couche chargée
+
+            for table in tables_attributaires:
+                try:
+                    # création d'un URI pour les tables du GPKG
+                    uri = f"{selected_GPKG}|layername={table}"
+
+                    # création de la couche
+                    layer = QgsVectorLayer(uri, f"{table}", "ogr")
+
+                    if layer.isValid():
+                        # ajout de la couche au projet dans le groupe si elle est valide
+                        QgsProject.instance().addMapLayer(layer, False)
+                        group.addLayer(layer)
+                        loaded_layer = layer
+                        QgsMessageLog.logMessage(f"Table {table} chargée avec succès", "Top'Eau", Qgis.Info)
+                    else:
+                        QgsMessageLog.logMessage(f"Impossible de charger la table {table}", "Top'Eau", Qgis.Warning)
+
+                except Exception as e:
+                    QgsMessageLog.logMessage(f"Erreur lors du chargement de la table {table}: {str(e)}", "Top'Eau",
+                                             Qgis.Warning)
+
+            return loaded_layer
+
+        except Exception as e:
+                    QgsMessageLog.logMessage(f"Erreur lors du chargement des tables dans QGIS : {str(e)}", "Top'Eau",
+                                             Qgis.Warning)
