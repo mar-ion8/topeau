@@ -94,6 +94,7 @@ Pour installer le Plugin depuis GitHub :
 | json               | Ce module offre la possibilité de manipuler, lire et encoder des données de type JSON |
 | datetime           | “Ce module met à disposition des fonctions pour manipuler des dates et des heures. [...] l’efficacité de l’import de ce module est due au formatage et à la manipulation des données résultats” (https://docs.python.org) |
 | numpy              | Ce module offre la possibilité de calculer les statistiques (déciles, médiane…) qui n’étaient pas calculées à partir des algorithmes natifs de QGIS |
+| rasterio           | Ce module offre un ensemble de fonctionnalités utiles à la lecture de données raster, voire à leur manipulation |
 
 
 
