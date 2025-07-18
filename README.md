@@ -89,7 +89,7 @@ Pour installer le Plugin depuis GitHub :
 #### Modules Python
 
 | Module             | Utilisation       |
-|____________________|___________________|
+|--------------------|-------------------|
 | os                 |“Ce module fournit une façon portable d'utiliser les fonctionnalités dépendantes du système d'exploitation.” (https://docs.python.org) |
 | json               | Ce module offre la possibilité de manipuler, lire et encoder des données de type JSON |
 | datetime           | “Ce module met à disposition des fonctions pour manipuler des dates et des heures. [...] l’efficacité de l’import de ce module est due au formatage et à la manipulation des données résultats” (https://docs.python.org) |
