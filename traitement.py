@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 # Import module PyQt et API PyQGIS
 from qgis import core, gui
 from PyQt5.QtCore import *
@@ -25,27 +24,13 @@ import subprocess
 from osgeo import gdal, ogr, osr
 import sqlite3
 
-# import librairies nécessaires à la datavisualisation
-import seaborn as sns
-import pandas as pd
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.figure import Figure
-
-# appel emplacement des fichiers de stockage des sorties temporaires -- style et temp
-temp_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "temp")
-qml_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "style")
-
-# lien entre traitement.py et visu.ui
-ui_path = os.path.dirname(os.path.abspath(__file__))
-ui_path = os.path.join(ui_path, "ui")
-form_traitement, _ = uic.loadUiType(os.path.join(ui_path, "traitement.ui"))
-form_graph, _ = uic.loadUiType(os.path.join(ui_path, "visu.ui"))
-
+from . import query
+from . import visu
+from . import params
 
 # mise en place de la classe TraitementWidget
 # va regrouper l'ensemble des fonctions relatives aux traitements à réaliser
-class TraitementWidget(QDialog, form_traitement):
+class TraitementWidget(QDialog, params.form_traitement):
     def __init__(self, iface):
         QDialog.__init__(self)
 
@@ -156,7 +141,7 @@ class TraitementWidget(QDialog, form_traitement):
 
         # 1.3. ajout de l'algorithme natif "Remplir les cellules sans données" pour harmoniser les valeurs NoData
         # de n'importe quelle donnée raster en entrée
-        path_nodata = os.path.join(temp_path, "temp_layer_nodata.tif")
+        path_nodata = os.path.join(params.temp_path, "temp_layer_nodata.tif")
 
         processing.run("native:fillnodata", {
             'INPUT': selected_raster,
@@ -167,7 +152,7 @@ class TraitementWidget(QDialog, form_traitement):
         })
 
         # création d'un fichier temporaire
-        path_clip = os.path.join(temp_path, "temp_layer_clip.tif")
+        path_clip = os.path.join(params.temp_path, "temp_layer_clip.tif")
 
         # 1.4. ajout de l'algorithme gdal "Découper un raster selon une couche de masque"
         processing.run("gdal:cliprasterbymasklayer", {
@@ -366,7 +351,7 @@ class TraitementWidget(QDialog, form_traitement):
         selected_vecteur = getattr(self, 'selected_vecteur_path', None)
 
         # création d'un fichier temporaire
-        path_clip = os.path.join(temp_path, "temp_layer_clip.tif")
+        path_clip = os.path.join(params.temp_path, "temp_layer_clip.tif")
 
         # 3.7.3. utilisation de l'algorithme GDAL "Découper un raster selon une couche de masque"
         processing.run("gdal:cliprasterbymasklayer", {
@@ -399,7 +384,7 @@ class TraitementWidget(QDialog, form_traitement):
         niveau_eau = self.current_level
 
         # 3.7.2. chargement du raster découpé précédemment
-        path_clip = os.path.join(temp_path, "temp_layer_clip.tif")
+        path_clip = os.path.join(params.temp_path, "temp_layer_clip.tif")
         layer_clip = QgsRasterLayer(path_clip, f"parcelle_decoupee", "gdal")
 
         # vérification de la validité de la couche
@@ -408,7 +393,7 @@ class TraitementWidget(QDialog, form_traitement):
             return None
 
         # création d'un fichier temporaire pour le résultat généré par la calculatrice raster
-        path_diff = os.path.join(temp_path, f"diff_{int(niveau_eau * 100)}.tif")
+        path_diff = os.path.join(params.temp_path, f"diff_{int(niveau_eau * 100)}.tif")
 
         # création d'une expression raster unique avec le niveau d'eau à étudier
         expression = f"{niveau_eau} - \"parcelle_decoupee@1\""
@@ -424,7 +409,7 @@ class TraitementWidget(QDialog, form_traitement):
         })
 
         # création d'un fichier temporaire pour la reclassification
-        path_reclass = os.path.join(temp_path, f"reclass_{int(niveau_eau * 100)}.tif")
+        path_reclass = os.path.join(params.temp_path, f"reclass_{int(niveau_eau * 100)}.tif")
 
         # 3.7.4. utilisation de l'outil natif "Reclassification" pour supprimer les valeurs négatives
         processing.run("native:reclassifybytable", {
@@ -457,7 +442,7 @@ class TraitementWidget(QDialog, form_traitement):
         # A VOIR SI SUPPRESSION
         
         # ajustement : ajout découpage pour éviter la création d'un contour rectangulaire aberrant lors de la création du raster
-        path_reclip = os.path.join(temp_path, f"{output_name}_reclip.tif")
+        path_reclip = os.path.join(params.temp_path, f"{output_name}_reclip.tif")
         selected_vecteur = getattr(self, 'selected_vecteur_path', None)
 
         processing.run("gdal:cliprasterbymasklayer", {
@@ -484,7 +469,7 @@ class TraitementWidget(QDialog, form_traitement):
         '''
 
         # création d'un fichier final pour le raster rééchantillonné
-        path_resamp = os.path.join(temp_path, f"{output_name}_resamp.tif")
+        path_resamp = os.path.join(params.temp_path, f"{output_name}_resamp.tif")
 
         # récupération de la valeur de résolution souhaitée par l'utilisateur
         # NB : la résolution dépend du raster en entrée avant de dépendre du raster en sortie
@@ -530,7 +515,7 @@ class TraitementWidget(QDialog, form_traitement):
                 raise Exception(f"Impossible d'ouvrir le raster {path_resamp}")
 
             # création d'un chemin temporaire pour le vecteur créé
-            raster_vectorise = os.path.join(temp_path, f"{output_name}_vecteur.gpkg")
+            raster_vectorise = os.path.join(params.temp_path, f"{output_name}_vecteur.gpkg")
 
             # utilisation de l'algorithme GDAL "Polygoniser" pour passer le raster généré en vecteur
             processing.run("gdal:polygonize", {
@@ -646,7 +631,7 @@ class TraitementWidget(QDialog, form_traitement):
             ds = None
 
             # récupération du raster découpé pour calculer les déciles
-            path_clip = os.path.join(temp_path, "temp_layer_clip.tif")
+            path_clip = os.path.join(params.temp_path, "temp_layer_clip.tif")
 
             # vérification de l'existence du fichier
             if not os.path.exists(path_clip):
@@ -699,88 +684,22 @@ class TraitementWidget(QDialog, form_traitement):
 
             # 4.1.1. Création des tables système GeoPackage obligatoires
             # création de la table pour les systèmes de référence : table gpkg_spatial_ref_sys
-            cursor.execute('''
-                        CREATE TABLE IF NOT EXISTS gpkg_spatial_ref_sys (
-                            srs_name TEXT NOT NULL,
-                            srs_id INTEGER NOT NULL PRIMARY KEY,
-                            organization TEXT NOT NULL,
-                            organization_coordsys_id INTEGER NOT NULL,
-                            definition TEXT NOT NULL,
-                            description TEXT
-                        )
-                    ''')
+            cursor.execute(query.q_1)
 
             # insertion du SCR Lambert 93 EPSG[2154]
-            cursor.execute('''
-                        INSERT OR REPLACE INTO gpkg_spatial_ref_sys 
-                        (srs_name, srs_id, organization, organization_coordsys_id, definition, description)
-                        VALUES (?, ?, ?, ?, ?, ?)
-                    ''', (
-                'RGF93 / Lambert-93',
-                2154,
-                'EPSG',
-                2154,
-                'PROJCS["RGF93 / Lambert-93",GEOGCS["RGF93",DATUM["Reseau_Geodesique_Francais_1993",SPHEROID["GRS 1980",6378137,298.257222101,AUTHORITY["EPSG","7019"]],AUTHORITY["EPSG","6171"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4171"]],PROJECTION["Lambert_Conformal_Conic_2SP"],PARAMETER["standard_parallel_1",49],PARAMETER["standard_parallel_2",44],PARAMETER["latitude_of_origin",46.5],PARAMETER["central_meridian",3],PARAMETER["false_easting",700000],PARAMETER["false_northing",6600000],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AUTHORITY["EPSG","2154"]]',
-                'Lambert 93 France'
-            ))
+            cursor.execute(query.q_2, query.params_q2)
 
             # création de la table contenant le catalogue de contenus : table gpkg_contents
-            cursor.execute('''
-                        CREATE TABLE IF NOT EXISTS gpkg_contents (
-                            table_name TEXT NOT NULL PRIMARY KEY,
-                            data_type TEXT NOT NULL,
-                            identifier TEXT UNIQUE,
-                            description TEXT DEFAULT '',
-                            last_change DATETIME NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
-                            min_x DOUBLE,
-                            min_y DOUBLE,
-                            max_x DOUBLE,
-                            max_y DOUBLE,
-                            srs_id INTEGER,
-                            CONSTRAINT fk_gc_r_srs_id FOREIGN KEY (srs_id) REFERENCES gpkg_spatial_ref_sys(srs_id)
-                        )
-                    ''')
+            cursor.execute(query.q_3)
 
             # création de la table contenant les informations géométriques : table gpkg_geometry_columns
-            cursor.execute('''
-                        CREATE TABLE IF NOT EXISTS gpkg_geometry_columns (
-                            table_name TEXT NOT NULL,
-                            column_name TEXT NOT NULL,
-                            geometry_type_name TEXT NOT NULL,
-                            srs_id INTEGER NOT NULL,
-                            z TINYINT NOT NULL,
-                            m TINYINT NOT NULL,
-                            CONSTRAINT pk_geom_cols PRIMARY KEY (table_name, column_name),
-                            CONSTRAINT fk_gc_tn FOREIGN KEY (table_name) REFERENCES gpkg_contents(table_name),
-                            CONSTRAINT fk_gc_srs FOREIGN KEY (srs_id) REFERENCES gpkg_spatial_ref_sys(srs_id)
-                        )
-                    ''')
+            cursor.execute(query.q_4)
 
             # création de la table contenant les informations liées à l'extension : table gpkg_extensions
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS gpkg_extensions (
-                    table_name TEXT,
-                    column_name TEXT,
-                    extension_name TEXT NOT NULL,
-                    definition TEXT NOT NULL,
-                    scope TEXT NOT NULL,
-                    CONSTRAINT ge_tce UNIQUE (table_name, column_name, extension_name)
-                )
-            ''')
+            cursor.execute(query.q_5)
 
             # création de la table pour les triggers de validation géométrique : table gpkg_data_columns
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS gpkg_data_columns (
-                    table_name TEXT NOT NULL,
-                    column_name TEXT NOT NULL,
-                    name TEXT,
-                    title TEXT,
-                    description TEXT,
-                    mime_type TEXT,
-                    constraint_name TEXT,
-                    CONSTRAINT pk_gdc PRIMARY KEY (table_name, column_name)
-                )
-            ''')
+            cursor.execute(query.q_6)
 
             # 4.2. récupération d'informations nécessaires à l'insertion de données attributaires dans les tables
 
@@ -892,8 +811,7 @@ class TraitementWidget(QDialog, form_traitement):
             # 4.4. création des tables attributaires à l'intérieur du GPKG
 
             # 4.4.1. création et insertion des données pour la table "zone_etude"
-            table_creation_sql = '''
-                        CREATE TABLE zone_etude (
+            table_creation_sql = '''CREATE TABLE zone_etude (
                             id INTEGER PRIMARY KEY AUTOINCREMENT, 
                             emprise GEOMETRY,
                             nom TEXT,
@@ -902,8 +820,7 @@ class TraitementWidget(QDialog, form_traitement):
                             max_parcelle REAL,
                             moyenne_parcelle REAL,
                             mediane_parcelle REAL'''
-
-            # Ajout des colonnes pour les déciles
+            # ajout des colonnes pour les déciles
             for i in range(10, 100, 10):
                 table_creation_sql += f',\n decile_{i} REAL'
 
@@ -912,26 +829,16 @@ class TraitementWidget(QDialog, form_traitement):
             cursor.execute(table_creation_sql)
 
             # enregistrement dans gpkg_contents AVANT gpkg_geometry_columns
-            cursor.execute('''
-                        INSERT INTO gpkg_contents 
-                        (table_name, data_type, identifier, description, last_change, min_x, min_y, max_x, max_y, srs_id) 
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    ''', (
-                'zone_etude',
+            cursor.execute(query.q_7, ('zone_etude',
                 'features',
                 'zone_etude',
                 'Zone d\'étude pour simulation Top\'Eau',
                 datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
                 min_x, min_y, max_x, max_y,
-                srid
-            ))
+                srid))
 
             # ajout de la colonne géométrique via la maj des métadonnées du GPKG
-            cursor.execute('''
-                        INSERT INTO gpkg_geometry_columns 
-                        (table_name, column_name, geometry_type_name, srs_id, z, m) 
-                        VALUES (?, ?, ?, ?, ?, ?)
-                    ''', ('zone_etude', 'emprise', geometry_type, srid, 0, 0))
+            cursor.execute(query.q_8, ('zone_etude', 'emprise', geometry_type, srid, 0, 0))
 
             # préparation de la requête d'insertion avec les déciles
             insert_columns = '''nom, emprise, surface_m2, min_parcelle, max_parcelle, moyenne_parcelle, mediane_parcelle'''
@@ -949,8 +856,8 @@ class TraitementWidget(QDialog, form_traitement):
                 valeurs_deciles = [deciles.get(f'decile_{i}', None) for i in range(10, 100, 10)]
 
                 # Construction de la requête SQL
-                colonnes_sql = 'emprise, nom, surface_m2, min_parcelle, max_parcelle, moyenne_parcelle, mediane_parcelle, ' + ', '.join(
-                    colonnes_deciles)
+                colonnes_sql = ('emprise, nom, surface_m2, min_parcelle, max_parcelle, moyenne_parcelle, mediane_parcelle, '
+                                + ', '.join(colonnes_deciles))
                 placeholders_sql = '?, ?, ?, ?, ?, ?, ?, ' + ', '.join(['?' for _ in colonnes_deciles])
 
                 # Valeurs à insérer
@@ -964,7 +871,7 @@ class TraitementWidget(QDialog, form_traitement):
                                         round(self.valeur_med, 2)
                                     ] + valeurs_deciles
 
-                # Choix de la méthode d'insertion selon la disponibilité de SpatiaLite
+                # choix de la méthode d'insertion selon la disponibilité de SpatiaLite
                 if self.spatialite_loaded:
                     # Avec SpatiaLite
                     cursor.execute(f'''
@@ -990,113 +897,27 @@ class TraitementWidget(QDialog, form_traitement):
             # 4.4.2. création de la table "hauteur_eau"
             # NB : l'insertion des données se fait dans une fonction dédiée car ce sont des données récupérées en fonction
             # des rasters créés et non en fonction du GPKG créé
-            cursor.execute('''
-                CREATE TABLE hauteur_eau (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT, 
-                    geom GEOMETRY,
-                    niveau_eau REAL,
-                    nom TEXT,
-                    surface_eau_m2 REAL,
-                    volume_eau_m3 REAL,
-                    classe_1 REAL,
-                    classe_2 REAL,
-                    classe_3 REAL,
-                    classe_4 REAL,
-                    classe_5 REAL,
-                    classe_6 REAL,
-                    classe_7 REAL,
-                    nom_fichier TEXT
-                )
-            ''')
+            cursor.execute(query.q_9)
             # enregistrement dans gpkg_contents pour hauteur_eau (sans extent pour l'instant)
-            cursor.execute('''
-                        INSERT INTO gpkg_contents 
-                        (table_name, data_type, identifier, description, last_change, srs_id) 
-                        VALUES (?, ?, ?, ?, ?, ?)
-                    ''', (
+            cursor.execute(query.q_10, (
                 'hauteur_eau',
                 'features',
                 'hauteur_eau',
                 'Surfaces inondées pour différents niveaux d\'eau',
                 datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
-                srid
-            ))
-
+                srid ))
             # ajout de la colonne géométrique via la maj des métadonnées du GPKG
-            cursor.execute('''
-                        INSERT INTO gpkg_geometry_columns 
-                        (table_name, column_name, geometry_type_name, srs_id, z, m) 
-                        VALUES (?, ?, ?, ?, ?, ?)
-                    ''', ('hauteur_eau', 'geom', 'MULTIPOLYGON', srid, 0, 0))
+            cursor.execute(query.q_11, ('hauteur_eau', 'geom', 'MULTIPOLYGON', srid, 0, 0))
 
             # 4.4.3. création de la table "mesure"
             # NB : la table est vide car c'est celle qui sera utilsiée plus tard pour le requêtage SQL
-            cursor.execute('''
-                CREATE TABLE mesure (
-                    id INTEGER PRIMARY KEY, 
-                    date DATE,
-                    niveau_eau REAL
-                )
-            ''')
+            cursor.execute(query.q_12)
 
             # 4.4.4. création et insertion des données dans la table "metadata_md1"
             # NB : les noms de champ et leur complétion ont été définis en fonction des documents qualité créés
             # par Olivier Schmit
-            cursor.execute('''
-                CREATE TABLE metadata_md1 (
-                    id INTEGER PRIMARY KEY, 
-                    nom_du_fichier TEXT,            
-                    mots_clefs TEXT,
-                    createur TEXT,
-                    contributeur TEXT,
-                    referent_metadonnees TEXT,
-                    personnes_a_contacter TEXT,
-                    description TEXT,
-                    date_de_creation DATE,
-                    type_de_donnees TEXT,
-                    format TEXT,
-                    langage TEXT,
-                    relation TEXT,
-                    extension_spatiale TEXT, 
-                    provenance TEXT,
-                    droits TEXT           
-                    )
-                ''')
-            cursor.execute('''
-                INSERT INTO metadata_md1(
-                    nom_du_fichier,
-                    mots_clefs,
-                    createur,
-                    contributeur,
-                    referent_metadonnees,
-                    personnes_a_contacter,
-                    description,
-                    date_de_creation,
-                    type_de_donnees,
-                    format,
-                    langage,
-                    relation,
-                    extension_spatiale,
-                    provenance,
-                    droits
-                ) 
-                VALUES (
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?
-                )''', (
+            cursor.execute(query.q_13)
+            cursor.execute(query.q_14, (
                     '_topeau.gpkg',
                     'Variables hydriques, mesure du niveau d\'eau, simulation inondation, parcelles, marais littoraux atlantiques, INRAE',
                     'Marion Bleuse',
@@ -1118,98 +939,8 @@ class TraitementWidget(QDialog, form_traitement):
             # 4.4.5. création et insertion des données dans la table "metadata_md2"
             # NB : les noms de champ et leur complétion ont été définis en fonction des documents qualité créés
             # par Olivier Schmit
-            cursor.execute('''
-                CREATE TABLE metadata_md2 (
-                    id INTEGER PRIMARY KEY, 
-                    date___mesure TEXT,            
-                    niveau_eau___mesure TEXT,
-                    nom___zone_etude TEXT,
-                    surface_m2___zone_etude TEXT,
-                    min_parcelle___zone_etude TEXT,
-                    max_parcelle___zone_etude TEXT,
-                    moyenne_parcelle___zone_etude TEXT,
-                    mediane_parcelle___zone_etude TEXT,
-                    niveau_eau___hauteur_eau TEXT,
-                    nom___hauteur_eau TEXT,
-                    surface_eau_m2___hauteur_eau TEXT,
-                    volume_eau_m3___hauteur_eau TEXT,
-                    classe_1___hauteur_eau TEXT,
-                    classe_2___hauteur_eau TEXT, 
-                    classe_3___hauteur_eau TEXT, 
-                    classe_4___hauteur_eau TEXT,
-                    classe_5___hauteur_eau TEXT,
-                    classe_6___hauteur_eau TEXT, 
-                    classe_7___hauteur_eau TEXT,
-                    nom_fichier___hauteur_eau TEXT         
-                )
-            ''')
-            cursor.execute('''
-                INSERT INTO metadata_md2(
-                    date___mesure,            
-                    niveau_eau___mesure,
-                    nom___zone_etude,
-                    surface_m2___zone_etude,
-                    min_parcelle___zone_etude,
-                    max_parcelle___zone_etude,
-                    moyenne_parcelle___zone_etude,
-                    mediane_parcelle___zone_etude,
-                    niveau_eau___hauteur_eau,
-                    nom___hauteur_eau,
-                    surface_eau_m2___hauteur_eau,
-                    volume_eau_m3___hauteur_eau,
-                    classe_1___hauteur_eau,
-                    classe_2___hauteur_eau, 
-                    classe_3___hauteur_eau, 
-                    classe_4___hauteur_eau,
-                    classe_5___hauteur_eau,
-                    classe_6___hauteur_eau, 
-                    classe_7___hauteur_eau,
-                    nom_fichier___hauteur_eau
-                    ) 
-                VALUES (
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?
-                )''', (
-                    'Date relevée pour la mesure du niveau d\'eau dans la parcelle (bouée, piézomètre, relevé terrain)',
-                    'Niveau relevé pour la mesure du niveau d\'eau dans la parcelle (bouée, piézomètre, relevé terrain)',
-                    'Nom donné par l\'utilisateur pour la zone qu\'il étudie',
-                    'Surface du polygone correspondant à la zone d\'étude (en m²)',
-                    'Point le plus bas de la parcelle (en mètre)',
-                    'Point le plus haut de la parcelle (en mètre)',
-                    'Elévation moyenne dans la parcelle (en mètre)',
-                    'Valeur médiane pour l\'élévation de la parcelle (en mètre)',
-                    'Valeur simulée & étudiée pour l\'emprise hydrique dans la parcelle (en mètre)',
-                    'Nom donné par l\'utilisateur pour la zone qu\'il étudie',
-                    'Surface couverte par l\'eau selon le niveau simulé dans la parcelle (en m²)',
-                    'Volume d\'eau dans la zone d\'étude selon le niveau simulé dans la parcelle (en m³)',
-                    'Surface couverte par un niveau d\'eau compris dans la classe 1 : 0 - 5 cm (en m²)',
-                    'Surface couverte par un niveau d\'eau compris dans la classe 2 : 5 - 10 cm (en m²)',
-                    'Surface couverte par un niveau d\'eau compris dans la classe 3 : 10 - 15 cm (en m²)',
-                    'Surface couverte par un niveau d\'eau compris dans la classe 4 : 15 - 20 cm (en m²)',
-                    'Surface couverte par un niveau d\'eau compris dans la classe 5 : 20 - 25 cm (en m²)',
-                    'Surface couverte par un niveau d\'eau compris dans la classe 6 : 25 - 30 cm (en m²)',
-                    'Surface couverte par un niveau d\'eau compris dans la classe 7 : > 30 cm (en m²)',
-                    'Nom donné au raster lors de sa génération et son extension'
-                )
-            )
+            cursor.execute(query.q_15)
+            cursor.execute(query.q_16, query.params_q16)
 
             self.surface_zoneetude = surface_ze
 
@@ -1557,12 +1288,7 @@ class TraitementWidget(QDialog, form_traitement):
                         QgsMessageLog.logMessage(f"Erreur validation géométrie: {str(e)}", "Top'Eau", Qgis.Warning)
 
                     # insertion des données avec SpatiaLite
-                    cursor.execute('''
-                           INSERT INTO hauteur_eau 
-                           (geom, niveau_eau, nom, surface_eau_m2, volume_eau_m3,
-                           classe_1, classe_2, classe_3, classe_4, classe_5, classe_6, classe_7, nom_fichier) 
-                           VALUES (ST_GeomFromWKB(?, ?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                       ''', (
+                    cursor.execute(query.q_17, (
                         geom_raster_wkb,
                         2154,
                         round(self.current_level, 2),
@@ -1580,13 +1306,7 @@ class TraitementWidget(QDialog, form_traitement):
                     ))
                 else:
                     # insertion directe avec les fonctions GPKG natives (géométrie en blob)
-                    cursor.execute('''
-                           INSERT INTO hauteur_eau 
-                           (geom,niveau_eau, nom, surface_eau_m2, volume_eau_m3,
-                           classe_1, classe_2, classe_3, classe_4, classe_5, classe_6, classe_7,
-                        nom_fichier) 
-                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                       ''', (
+                    cursor.execute(query.q_18, (
                         geom_raster_wkb,
                         round(self.current_level, 2),
                         self.nomZE.text(),
@@ -1604,23 +1324,14 @@ class TraitementWidget(QDialog, form_traitement):
 
                 # mise à jour des extent dans gpkg_contents
                 if min_x is not None and min_y is not None and max_x is not None and max_y is not None:
-                    cursor.execute('''
-                                        SELECT MIN(min_x), MIN(min_y), MAX(max_x), MAX(max_y) 
-                                        FROM (
-                                            SELECT ? as min_x, ? as min_y, ? as max_x, ? as max_y
-                                            UNION 
-                                            SELECT min_x, min_y, max_x, max_y FROM gpkg_contents WHERE table_name = 'hauteur_eau'
-                                        )
-                                    ''', (min_x, min_y, max_x, max_y))
-
+                    cursor.execute(query.q_19, (min_x, min_y, max_x, max_y))
                     result = cursor.fetchone()
                     if result and all(v is not None for v in result):
                         cursor.execute('''
                                             UPDATE gpkg_contents 
-                                            SET min_x = ?, min_y = ?, max_x = ?, max_y = ?, 
-                                                last_change = ?
+                                            SET min_x = ?, min_y = ?, max_x = ?, max_y = ?, last_change = ?
                                             WHERE table_name = 'hauteur_eau'
-                                        ''', (result[0], result[1], result[2], result[3],
+                                            ''', (result[0], result[1], result[2], result[3],
                                               datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%fZ')))
 
                 self.surface_hauteur = surface_totale
@@ -1628,13 +1339,7 @@ class TraitementWidget(QDialog, form_traitement):
 
             else:
                 # insertion sans géométrie si elle n'est pas disponible
-                cursor.execute('''
-                              INSERT INTO hauteur_eau 
-                              (niveau_eau, nom, surface_eau_m2, volume_eau_m3,
-                              classe_1, classe_2, classe_3, classe_4, classe_5, classe_6, classe_7,
-                              nom_fichier) 
-                              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                          ''', (
+                cursor.execute(query.q_20, (
                     round(self.current_level, 2),
                     self.nomZE.text(),
                     round(surface_totale, 2),
@@ -1764,8 +1469,7 @@ class TraitementWidget(QDialog, form_traitement):
 
             # requête pour récupérer les tables raster
             cursor.execute("""
-                SELECT table_name 
-                FROM gpkg_contents 
+                SELECT table_name FROM gpkg_contents 
                 WHERE data_type = 'tiles' OR data_type = '2d-gridded-coverage'
             """)
 
@@ -1781,142 +1485,5 @@ class TraitementWidget(QDialog, form_traitement):
 
     # fonction permettant l'affichage de la fenêtre liée à la datavisualisation
     def lance_fenetre_graph(self):
-        self.graph_window = VisuWindow(parent_widget=self)
+        self.graph_window = visu.VisuWindow(parent_widget=self)
         self.graph_window.exec_()
-
-
-class VisuWindow(QDialog, form_graph):
-    def __init__(self, parent_widget=None):
-        QDialog.__init__(self)
-
-        # Stocker la référence au widget parent qui contient les déciles
-        self.parent_widget = parent_widget
-
-        # création de l'interface de la fenêtre QGIS
-        self.setupUi(self)
-        # ajustement de la taille de la fenêtre pour qu'elle soit fixe
-        #self.setFixedSize(600, 400)
-
-        # nom donné à la fenêtre
-        self.setWindowTitle("Top'Eau - Visualisation des statistiques liées aux données eau")
-
-        # Bouton "OK / Annuler"
-        self.terminer.rejected.connect(self.reject)
-
-        # connexion de la barre de progression
-        self.progressBar.setValue(0)
-
-        # Bouton "Visualiser les déciles" - passer l'instance qui contient les déciles
-        self.visuDeciles.clicked.connect(self.creer_graphique_deciles)
-
-        # Bouton "Visualiser les déciles" - passer l'instance qui contient les déciles
-        self.visuSurface.clicked.connect(self.creer_graphique_surface)
-
-        # instauration de variables relatives à la création de l'interface graphiques
-        layout = self.findChild(QVBoxLayout, 'layoutGraph')
-        self.canvas = FigureCanvas(Figure())
-        layout.addWidget(self.canvas)
-
-    def creer_graphique_deciles(self):
-
-        # récupération des attributs parents
-        if (self.parent_widget and
-                hasattr(self.parent_widget, 'deciles_calcules') and
-                self.parent_widget.deciles_calcules):
-
-            deciles_dict = self.parent_widget.deciles_calcules
-
-            # extraction des valeurs des déciles
-            valeurs_deciles = []
-            for i in range(10, 100, 10):
-                key = f'decile_{i}'
-                if key in deciles_dict:
-                    valeurs_deciles.append(deciles_dict[key])
-
-                    # connexion de la barre de progression
-                    self.progressBar.setValue(50)
-
-                else:
-                    valeurs_deciles.append(0)
-
-            # création du graphique avec matplotlib
-            df = pd.DataFrame({
-                'Décile': [f'D{i}' for i in range(1, 10)],
-                'Valeur': valeurs_deciles
-            })
-
-            fig, ax = plt.subplots(figsize=(5, 3))
-            sns.barplot(data=df, x='Décile', y='Valeur', ax=ax)
-            ax.set_title('Distribution des déciles pour la zone d\'étude')
-            ax.set_xlabel('Déciles')
-            ax.set_ylabel('Valeur (m)')
-
-            self.canvas.figure = fig
-            self.canvas.draw()
-
-            # connexion de la barre de progression
-            self.progressBar.setValue(100)
-
-            QgsMessageLog.logMessage("Graphique des déciles créé avec succès", "Top'Eau", Qgis.Info)
-        else:
-            QgsMessageLog.logMessage("Aucun décile calculé disponible", "Top'Eau", Qgis.Warning)
-
-    def creer_graphique_surface(self):
-
-        # récupération des attributs parents
-        if (self.parent_widget and
-                hasattr(self.parent_widget, 'surface_hauteur') and
-                self.parent_widget.surface_hauteur)  :
-
-            if (self.parent_widget and
-                    hasattr(self.parent_widget, 'niveaueau_hauteur') and
-                    self.parent_widget.niveaueau_hauteur) :
-
-                if (self.parent_widget and
-                        hasattr(self.parent_widget, 'surface_zoneetude') and
-                        self.parent_widget.surface_zoneetude):
-
-                    surface = self.parent_widget.surface_hauteur
-                    niveau_eau = self.parent_widget.niveaueau_hauteur
-                    surfaceze = self.parent_widget.surface_zoneetude
-
-                    # création du graphique avec matplotlib
-                    df = pd.DataFrame({
-                        'Niveau d\'eau' : niveau_eau,
-                        'Surface': surface,
-                        'Surface de la zone d\'étude' : surfaceze
-                    })
-
-                    fig, ax1 = plt.subplots(figsize=(4, 2))
-
-                    # attribution valeurs ordonnées gauche
-                    ax1.set_xlabel('Niveau d\'eau (m)')
-                    ax1.set_ylabel('Surface (m²)')
-                    sns.lineplot(data=df, x='Niveau d\'eau', y='Surface', ax=ax1)
-                    ax1.tick_params(axis='y')
-
-                    # attribution valuers ordonnées droite
-                    ax2 = ax1.twinx()
-                    ax2.set_ylabel('Surface de la zone d\'étude (m²)')
-                    sns.lineplot(data=df, x='Niveau d\'eau', y='Surface de la zone d\'étude', ax=ax2)
-                    ax2.tick_params(axis='y')
-
-                    # titre
-                    fig.suptitle('Répartition des surfaces pour la zone d\'étude')
-                    # ajustement de la mise en page
-                    fig.tight_layout()
-
-                    self.canvas.figure = fig
-                    self.canvas.draw()
-
-                    # connexion de la barre de progression
-                    self.progressBar.setValue(100)
-
-                    QgsMessageLog.logMessage("Graphique des surfaces créé avec succès", "Top'Eau", Qgis.Info)
-        else:
-            QgsMessageLog.logMessage("Aucune donnée récupérée depuis le GPKG disponible", "Top'Eau", Qgis.Warning)
-
-
-
-
-
