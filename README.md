@@ -78,7 +78,7 @@ Pour installer le Plugin depuis GitHub :
 
 ### Aspect technique
 
-<p align="justify">Métiers concernés : administrateur SIG, technicien SIG, développeur, géomaticien, informaticien,  <p>
+<p align="justify">Métiers concernés : administrateur SIG, technicien SIG, développeur, géomaticien, informaticien,  </p>
 
 #### Langages 
 
@@ -101,9 +101,9 @@ Pour installer le Plugin depuis GitHub :
 
 ### Collaborateurs
 
-- <p align="justify"><strong>Julien Ancelin :</strong> encadrement technique, contrôle des modifications et des données produites, participation à l'écriture des fichiers de code<p>
-- <p align="justify"><strong>Romain Monjaret :</strong> aide apportée pour la gestion de certaines erreurs, séparation des fichiers de code, ressource en documentation/tutoriels Git, GitHub, Python<p>
-- <p align="justify"><strong>Olivier Schmit :</strong> contrôle des métadonnées<p>
+- <p align="justify"><strong>Julien Ancelin :</strong> encadrement technique, contrôle des modifications et des données produites, participation à l'écriture des fichiers de code</p>
+- <p align="justify"><strong>Romain Monjaret :</strong> aide apportée pour la gestion de certaines erreurs, séparation des fichiers de code, ressource en documentation/tutoriels Git, GitHub, Python</p>
+- <p align="justify"><strong>Olivier Schmit :</strong> contrôle des métadonnées</p>
 
 ### Sources 
 
