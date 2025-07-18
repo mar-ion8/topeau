@@ -2,8 +2,6 @@
 
 ## Installation du Plugin
 
-## Présentation du Plugin Top'Eau
-
 <p align='justify'>
 Pour installer le Plugin depuis GitHub : 
 <br>
@@ -16,7 +14,7 @@ Pour installer le Plugin depuis GitHub :
 > Disque local C:
 	> Utilisateurs
 		> sélection du dossier utilisateur
-			> AppData (si caché : chercher dans la barre de recherche d'emplacement)
+			> AppData
 				> Roaming
 					> QGIS > QGIS3 > profiles > default
 						> python
@@ -26,9 +24,7 @@ Pour installer le Plugin depuis GitHub :
 4. si QGIS ouvert : fermer la fenêtre et relancer
 </p>
 
-
-
-
+## Présentation du Plugin Top'Eau
 
 ### Genèse du Plugin
 
