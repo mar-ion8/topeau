@@ -280,6 +280,10 @@ class TraitementWidget(QDialog, form_traitement):
         self.current_level = max_level  # on commence au niveau max et on descend
         count = 0
 
+        # initialisation des variables pour les graphs
+        self.niveaueau_hauteur = []
+        self.surface_hauteur = []
+
         # calcul du pas de progression pour la barre
         progress_step = 100 / nb_niveaux if nb_niveaux > 0 else 0
 
@@ -317,8 +321,18 @@ class TraitementWidget(QDialog, form_traitement):
                     raster_vectorise = self.vectoriser_raster(resampled_raster, output_name)
 
                     # calcul des stats pour la table
-                    surface_totale, _, volume_total, classe_1_surf, classe_2_surf, classe_3_surf, classe_4_surf, classe_5_surf, classe_6_surf, classe_7_surf = self.calculer_stats_raster(
-                        resampled_raster)
+                    (surface_totale, _, volume_total, classe_1_surf, classe_2_surf, classe_3_surf, classe_4_surf, classe_5_surf, classe_6_surf,
+                        classe_7_surf) = self.calculer_stats_raster(resampled_raster)
+
+                    # protection contre l'écrasement des variables
+                    if not hasattr(self, 'niveaueau_hauteur') or not isinstance(self.niveaueau_hauteur, list):
+                        self.niveaueau_hauteur = []
+                    if not hasattr(self, 'surface_hauteur') or not isinstance(self.surface_hauteur, list):
+                        self.surface_hauteur = []
+
+                    # collecte les données pour le graphique
+                    self.niveaueau_hauteur.append(self.current_level)
+                    self.surface_hauteur.append(surface_totale)
 
                     # alimentation de la table SQLite
                     self.ajouter_donnees_table_gpkg(gpkg_path, surface_totale, volume_total,
@@ -617,6 +631,7 @@ class TraitementWidget(QDialog, form_traitement):
         from datetime import datetime
 
         self.deciles_calcules = {}
+        self.surface_zoneetude = []
 
         try:
 
@@ -804,6 +819,7 @@ class TraitementWidget(QDialog, form_traitement):
                             deciles[f'decile_{int(percentile)}'] = round(valeurs_deciles[i], 2)
 
                         self.deciles_calcules = deciles
+
 
                         QgsMessageLog.logMessage(f"Déciles calculés avec succès", "Top'Eau", Qgis.Info)
                     else:
@@ -1195,6 +1211,8 @@ class TraitementWidget(QDialog, form_traitement):
                 )
             )
 
+            self.surface_zoneetude = surface_ze
+
             conn.commit()
             conn.close()
 
@@ -1515,6 +1533,10 @@ class TraitementWidget(QDialog, form_traitement):
                     QgsMessageLog.logMessage("SpatiaLite non disponible pour cette connexion", "Top'Eau", Qgis.Info)
 
             # 3.7.2. insertion du contenu dans la table
+
+            self.surface_hauteur = {}
+            self.sommesurf_hauteur = {}
+
             if geom_raster_wkb:
                 if spatialite_loaded:
                     # test de validité avec SpatiaLite
@@ -1600,6 +1622,9 @@ class TraitementWidget(QDialog, form_traitement):
                                             WHERE table_name = 'hauteur_eau'
                                         ''', (result[0], result[1], result[2], result[3],
                                               datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%fZ')))
+
+                self.surface_hauteur = surface_totale
+                self.sommesurf_hauteur = classe_3_surf + classe_4_surf + classe_5_surf + classe_6_surf + classe_7_surf
 
             else:
                 # insertion sans géométrie si elle n'est pas disponible
@@ -1784,6 +1809,9 @@ class VisuWindow(QDialog, form_graph):
         # Bouton "Visualiser les déciles" - passer l'instance qui contient les déciles
         self.visuDeciles.clicked.connect(self.creer_graphique_deciles)
 
+        # Bouton "Visualiser les déciles" - passer l'instance qui contient les déciles
+        self.visuSurface.clicked.connect(self.creer_graphique_surface)
+
         # instauration de variables relatives à la création de l'interface graphiques
         layout = self.findChild(QVBoxLayout, 'layoutGraph')
         self.canvas = FigureCanvas(Figure())
@@ -1832,4 +1860,63 @@ class VisuWindow(QDialog, form_graph):
             QgsMessageLog.logMessage("Graphique des déciles créé avec succès", "Top'Eau", Qgis.Info)
         else:
             QgsMessageLog.logMessage("Aucun décile calculé disponible", "Top'Eau", Qgis.Warning)
+
+    def creer_graphique_surface(self):
+
+        # récupération des attributs parents
+        if (self.parent_widget and
+                hasattr(self.parent_widget, 'surface_hauteur') and
+                self.parent_widget.surface_hauteur)  :
+
+            if (self.parent_widget and
+                    hasattr(self.parent_widget, 'niveaueau_hauteur') and
+                    self.parent_widget.niveaueau_hauteur) :
+
+                if (self.parent_widget and
+                        hasattr(self.parent_widget, 'surface_zoneetude') and
+                        self.parent_widget.surface_zoneetude):
+
+                    surface = self.parent_widget.surface_hauteur
+                    niveau_eau = self.parent_widget.niveaueau_hauteur
+                    surfaceze = self.parent_widget.surface_zoneetude
+
+                    # création du graphique avec matplotlib
+                    df = pd.DataFrame({
+                        'Niveau d\'eau' : niveau_eau,
+                        'Surface': surface,
+                        'Surface de la zone d\'étude' : surfaceze
+                    })
+
+                    fig, ax1 = plt.subplots(figsize=(4, 2))
+
+                    # attribution valeurs ordonnées gauche
+                    ax1.set_xlabel('Niveau d\'eau (m)')
+                    ax1.set_ylabel('Surface (m²)')
+                    sns.lineplot(data=df, x='Niveau d\'eau', y='Surface', ax=ax1)
+                    ax1.tick_params(axis='y')
+
+                    # attribution valuers ordonnées droite
+                    ax2 = ax1.twinx()
+                    ax2.set_ylabel('Surface de la zone d\'étude (m²)')
+                    sns.lineplot(data=df, x='Niveau d\'eau', y='Surface de la zone d\'étude', ax=ax2)
+                    ax2.tick_params(axis='y')
+
+                    # titre
+                    fig.suptitle('Répartition des surfaces pour la zone d\'étude')
+                    # ajustement de la mise en page
+                    fig.tight_layout()
+
+                    self.canvas.figure = fig
+                    self.canvas.draw()
+
+                    # connexion de la barre de progression
+                    self.progressBar.setValue(100)
+
+                    QgsMessageLog.logMessage("Graphique des surfaces créé avec succès", "Top'Eau", Qgis.Info)
+        else:
+            QgsMessageLog.logMessage("Aucune donnée récupérée depuis le GPKG disponible", "Top'Eau", Qgis.Warning)
+
+
+
+
 
