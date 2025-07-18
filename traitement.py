@@ -15,7 +15,6 @@ import json
 # import librairie nécessaire à certains calculs
 import math
 import statistics
-
 # import librairie manipulation raster et gpkg
 import rasterio
 from rasterio.transform import from_origin
@@ -23,36 +22,28 @@ import numpy as np
 import subprocess
 from osgeo import gdal, ogr, osr
 import sqlite3
-
+# import fichiers de code supplémentaires contenant fonctions/variables
 from . import query
 from . import visu
 from . import params
 
-# mise en place de la classe TraitementWidget
-# va regrouper l'ensemble des fonctions relatives aux traitements à réaliser
+# mise en place de la classe TraitementWidget pour regrouper l'ensemble des fonctions relatives aux traitements à réaliser
 class TraitementWidget(QDialog, params.form_traitement):
     def __init__(self, iface):
         QDialog.__init__(self)
-
         # création de l'interface de la fenêtre QGIS
         self.setupUi(self)
-        # ajustement de la taille de la fenêtre pour qu'elle soit fixe
-        #self.setFixedSize(600, 400)
         # nom donné à la fenêtre
         self.setWindowTitle("Top'Eau - Analyse raster : différence entre le niveau d'eau et la parcelle")
 
         # Bouton "OK / Annuler"
         self.terminer.rejected.connect(self.reject)
-
         # Bouton "Récupérer la valeur minimale d'élévation au sein de la zone d'étude"
         self.recuperer.clicked.connect(self.chargement_donnees_raster)
-
         # Bouton "Générer le raster"
         self.generer.clicked.connect(self.chargement_raster)
-
         # Bouton "Visualiser les données
         self.graphique.clicked.connect(self.lance_fenetre_graph)
-
         # boutons à cocher ("checkbox")
         self.oui = self.findChild(QCheckBox, "oui")
         self.non = self.findChild(QCheckBox, "non")
@@ -65,17 +56,12 @@ class TraitementWidget(QDialog, params.form_traitement):
 
         # initialisation de valeur_min pour qu'elle puisse être utilisée dans toutes les fonctions
         self.valeur_min = None
-
         # initialisation du niveau d'eau à étudier pour l'utiliser dans les différentes fonctions
         self.current_level = None
 
         # association de filtres à la sélection de couches dans le projet QGIS
-        self.inputRaster_2.setFilters(
-            QgsMapLayerProxyModel.RasterLayer
-        )
-        self.inputVecteur_2.setFilters(
-            QgsMapLayerProxyModel.PolygonLayer
-        )
+        self.inputRaster_2.setFilters(QgsMapLayerProxyModel.RasterLayer)
+        self.inputVecteur_2.setFilters(QgsMapLayerProxyModel.PolygonLayer)
 
         # association de l'import de fichiers aux fonctions de désactivation des listes déroulantes
         self.inputRaster.fileChanged.connect(self.maj_etat_inputRaster2)
@@ -108,15 +94,13 @@ class TraitementWidget(QDialog, params.form_traitement):
         else:
             self.inputVecteur_2.setEnabled(True)
 
-
     # première étape de l'analyse
     # fonction qui va permettre l'affichage des informations relatives à la zone d'étude
     def chargement_donnees_raster(self):
 
         # 1. découpage du raster en fonction de la ZE
 
-        # 1.1. chargement du raster sélectionné par l'utilisateur dans une variable
-        selected_raster = self.inputRaster.filePath()
+        selected_raster = self.inputRaster.filePath() # chargement du raster sélectionné par l'utilisateur
         # vérification de la sélection d'un fichier en fonction du choix de l'utilisateur...
         #...localement...
         if not selected_raster or selected_raster.strip() == "":
@@ -127,8 +111,7 @@ class TraitementWidget(QDialog, params.form_traitement):
                 return
             selected_raster = layer
 
-        # 1.2. chargement du vecteur sélectionné par l'utilisateur dans une variable
-        selected_vecteur = self.inputVecteur.filePath()
+        selected_vecteur = self.inputVecteur.filePath() # chargement du vecteur sélectionné par l'utilisateur
         # vérification de la sélection d'un fichier en fonction du choix de l'utilisateur...
         # ...localement...
         if not selected_vecteur or selected_vecteur.strip() == "":
@@ -139,10 +122,8 @@ class TraitementWidget(QDialog, params.form_traitement):
                 return
             selected_vecteur = layer
 
-        # 1.3. ajout de l'algorithme natif "Remplir les cellules sans données" pour harmoniser les valeurs NoData
-        # de n'importe quelle donnée raster en entrée
-        path_nodata = os.path.join(params.temp_path, "temp_layer_nodata.tif")
-
+        # 1.1. ajout de l'algo "Remplir les cellules sans données" pour harmoniser les valeurs NoData des rasters en entrée
+        path_nodata = os.path.join(params.temp_path, "temp_layer_nodata.tif") # fichier temp pour sortie de l'algo
         processing.run("native:fillnodata", {
             'INPUT': selected_raster,
             'BAND': 1,
@@ -150,11 +131,9 @@ class TraitementWidget(QDialog, params.form_traitement):
             'CREATE_OPTIONS': None,
             'OUTPUT': path_nodata
         })
+        path_clip = os.path.join(params.temp_path, "temp_layer_clip.tif") # création d'un fichier temporaire
 
-        # création d'un fichier temporaire
-        path_clip = os.path.join(params.temp_path, "temp_layer_clip.tif")
-
-        # 1.4. ajout de l'algorithme gdal "Découper un raster selon une couche de masque"
+        # 1.2. ajout de l'algorithme gdal "Découper un raster selon une couche de masque"
         processing.run("gdal:cliprasterbymasklayer", {
             'INPUT': path_nodata,  # appel à la variable récupérant le raster dont les valeurs NoData ont été harmonisées
             'MASK': selected_vecteur,  # appel à la variable récupérant le vecteur sélectionné
@@ -172,18 +151,15 @@ class TraitementWidget(QDialog, params.form_traitement):
             'OPTIONS': None,
             'DATA_TYPE': 0,
             'EXTRA': '',  # peut recevoir une ligne de commande indiquant des paramètres additionnels
-            'OUTPUT': path_clip
-            # appel du fichier temporaire pour afficher le résultat dans l'interface graphique de QGIS
+            'OUTPUT': path_clip # appel du fichier temporaire pour afficher le résultat dans l'interface graphique de QGIS
         })
 
-
-        # 1.5. chargement du raster découpé comme une nouvelle couche QGIS
+        # 1.3. chargement du raster découpé comme une nouvelle couche QGIS
         layer_clip = QgsRasterLayer(path_clip, f"parcelle_decoupee", "gdal")
         # s'assurer qu'il n'y a pas d'erreur
         if not layer_clip.isValid():
             QMessageBox.warning(self, "Erreur", "La couche raster n'est pas valide.")
             return
-
 
         # 2. affichage des informations relatives à la ZE dans l'interface du plugin
 
@@ -193,7 +169,7 @@ class TraitementWidget(QDialog, params.form_traitement):
             'INPUT_RASTER': selected_raster,
             'RASTER_BAND':1,
             'COLUMN_PREFIX':'_',
-            'STATISTICS':[3,2,5,6], #mediane, moyenne, min, max
+            'STATISTICS':[3,2,5,6], # dans l'ordre : mediane, moyenne, min, max
             'OUTPUT':'TEMPORARY_OUTPUT'})
 
         # récupération de la couche de sortie
@@ -329,29 +305,23 @@ class TraitementWidget(QDialog, params.form_traitement):
             # passage au niveau suivant (en suivant le pas)
             self.current_level -= pas
 
-        # mise à jour de la barre de progression à 100% à la fin de la génération des rasters
-        self.progressBar.setValue(100)
-
-        # chargement automatique du GPKG dans QGIS
-        self.charger_gpkg_dans_qgis(gpkg_path, couches_generees)
+        self.progressBar.setValue(100) # màj de la barre de progression à 100% à la fin de la génération des rasters
+        self.charger_gpkg_dans_qgis(gpkg_path, couches_generees) # chargement automatique du GPKG dans QGIS
 
         # affichage du nombre de rasters générés
-        QMessageBox.information(self, "Traitement terminé",
-                                f"{len(couches_generees)} rasters ont été générés avec succès.")
+        QMessageBox.information(self,"Traitement terminé",f"{len(couches_generees)} rasters ont été générés avec succès.")
 
 
     # étape interne à la génération des rasters
     # fonction permettant de découper le raster
     # la fonction est répétée automatiquement autant de fois qu'il y a de niveaux d'eau à traiter puisqu'elle est traitée par la boucle
     def decouper_raster(self):
-        # utilisation des chemins stockés plutôt que de refaire la sélection
-        # 3.7.1. chargement du raster sélectionné par l'utilisateur
-        selected_raster = getattr(self, 'selected_raster_path', None)
-        # 3.7.2. chargement du vecteur sélectionné par l'utilisateur
-        selected_vecteur = getattr(self, 'selected_vecteur_path', None)
 
-        # création d'un fichier temporaire
-        path_clip = os.path.join(params.temp_path, "temp_layer_clip.tif")
+        # utilisation des chemins stockés plutôt que de refaire la sélection
+        selected_raster = getattr(self, 'selected_raster_path', None) # chargement du raster sélectionné par l'utilisateur
+        selected_vecteur = getattr(self, 'selected_vecteur_path', None) # chargement du vecteur sélectionné par l'utilisateur
+
+        path_clip = os.path.join(params.temp_path, "temp_layer_clip.tif") # création d'un fichier temporaire
 
         # 3.7.3. utilisation de l'algorithme GDAL "Découper un raster selon une couche de masque"
         processing.run("gdal:cliprasterbymasklayer", {
@@ -380,10 +350,9 @@ class TraitementWidget(QDialog, params.form_traitement):
     # la fonction est répétée automatiquement autant de fois qu'il y a de niveaux d'eau à traiter puisqu'elle est traitée par la boucle
     def calcul_niveau_eau(self, output_path):
 
-        # 3.7.1. utilisation de self.current_level pour le niveau d'eau
         niveau_eau = self.current_level
 
-        # 3.7.2. chargement du raster découpé précédemment
+        # 3.7.1. chargement du raster découpé précédemment
         path_clip = os.path.join(params.temp_path, "temp_layer_clip.tif")
         layer_clip = QgsRasterLayer(path_clip, f"parcelle_decoupee", "gdal")
 
@@ -392,13 +361,10 @@ class TraitementWidget(QDialog, params.form_traitement):
             QMessageBox.warning(self, "Erreur", "La couche raster découpée n'est pas valide.")
             return None
 
-        # création d'un fichier temporaire pour le résultat généré par la calculatrice raster
-        path_diff = os.path.join(params.temp_path, f"diff_{int(niveau_eau * 100)}.tif")
+        path_diff = os.path.join(params.temp_path, f"diff_{int(niveau_eau * 100)}.tif") # fichier temp résultat généré par la calculatrice raster
+        expression = f"{niveau_eau} - \"parcelle_decoupee@1\"" # création d'une expression raster unique avec le niveau d'eau à étudier
 
-        # création d'une expression raster unique avec le niveau d'eau à étudier
-        expression = f"{niveau_eau} - \"parcelle_decoupee@1\""
-
-        # 3.7.3. utilisation de la "Calculatrice raster"
+        # 3.7.2. utilisation de l'outil natif "Calculatrice raster"
         processing.run("native:rastercalc", {
             'LAYERS': [layer_clip],
             'EXPRESSION': expression,
@@ -408,10 +374,9 @@ class TraitementWidget(QDialog, params.form_traitement):
             'OUTPUT': path_diff
         })
 
-        # création d'un fichier temporaire pour la reclassification
-        path_reclass = os.path.join(params.temp_path, f"reclass_{int(niveau_eau * 100)}.tif")
+        path_reclass = os.path.join(params.temp_path, f"reclass_{int(niveau_eau * 100)}.tif") # fichier temporaire pour la reclassification
 
-        # 3.7.4. utilisation de l'outil natif "Reclassification" pour supprimer les valeurs négatives
+        # 3.7.3. utilisation de l'outil natif "Reclassification" pour supprimer les valeurs négatives
         processing.run("native:reclassifybytable", {
             'INPUT_RASTER': path_diff,
             'RASTER_BAND': 1,
@@ -438,7 +403,6 @@ class TraitementWidget(QDialog, params.form_traitement):
             return None
 
         '''
-        
         # A VOIR SI SUPPRESSION
         
         # ajustement : ajout découpage pour éviter la création d'un contour rectangulaire aberrant lors de la création du raster
@@ -465,16 +429,10 @@ class TraitementWidget(QDialog, params.form_traitement):
             'OUTPUT': path_reclip})
             
         # NB : changer l'input de r.resamp.stats en "path_reclip" si conservation
-
         '''
 
-        # création d'un fichier final pour le raster rééchantillonné
-        path_resamp = os.path.join(params.temp_path, f"{output_name}_resamp.tif")
-
-        # récupération de la valeur de résolution souhaitée par l'utilisateur
-        # NB : la résolution dépend du raster en entrée avant de dépendre du raster en sortie
-        # un raster ne peut pas être ré-échantillonné selon une valeur inférieure à celle de sa résolution de base
-        resolution = self.inputResol.value()
+        path_resamp = os.path.join(params.temp_path, f"{output_name}_resamp.tif") # fichier final pour le raster rééchantillonné
+        resolution = self.inputResol.value() # récupération de la valeur de résolution souhaitée par l'utilisateur
 
         # 3.7.1. utilisation de l'algorithme GRASS "r.resamp.Stats" pour le ré-échantillonnage
         processing.run("grass:r.resamp.stats", {
@@ -485,7 +443,7 @@ class TraitementWidget(QDialog, params.form_traitement):
             '-w': False,
             'output': path_resamp,
             'GRASS_REGION_PARAMETER': None,
-            'GRASS_REGION_CELLSIZE_PARAMETER': resolution,  # résolution de 25cm
+            'GRASS_REGION_CELLSIZE_PARAMETER': resolution,
             'GRASS_RASTER_FORMAT_OPT': '',
             'GRASS_RASTER_FORMAT_META': ''
         })
@@ -495,11 +453,9 @@ class TraitementWidget(QDialog, params.form_traitement):
             (surface_totale, _, volume_total,
              classe_1_surf, classe_2_surf, classe_3_surf, classe_4_surf,
              classe_5_surf, classe_6_surf, classe_7_surf) = self.calculer_stats_raster(path_resamp)
-
         else:
             QgsMessageLog.logMessage(f"Le fichier raster {path_resamp} n'existe pas", "Top'Eau", Qgis.Warning)
             return None
-
         return path_resamp
 
 
@@ -509,13 +465,11 @@ class TraitementWidget(QDialog, params.form_traitement):
     def vectoriser_raster (self, path_resamp, output_name) :
 
         try:
-
             # récupération du raster ré-échantillonné
             if path_resamp is None:
                 raise Exception(f"Impossible d'ouvrir le raster {path_resamp}")
 
-            # création d'un chemin temporaire pour le vecteur créé
-            raster_vectorise = os.path.join(params.temp_path, f"{output_name}_vecteur.gpkg")
+            raster_vectorise = os.path.join(params.temp_path, f"{output_name}_vecteur.gpkg") # chemin temp pour le vecteur
 
             # utilisation de l'algorithme GDAL "Polygoniser" pour passer le raster généré en vecteur
             processing.run("gdal:polygonize", {
@@ -526,7 +480,6 @@ class TraitementWidget(QDialog, params.form_traitement):
                 'EXTRA': '',
                 'OUTPUT': raster_vectorise
             })
-
             return raster_vectorise
 
         except Exception as e:
@@ -540,20 +493,17 @@ class TraitementWidget(QDialog, params.form_traitement):
     def calculer_stats_raster(self, path_resamp):
 
         try:
-            # traitement du raster avec GDAL
-            dataset = gdal.Open(path_resamp)
+            dataset = gdal.Open(path_resamp) # traitement du raster avec GDAL
             if dataset is None:
                 raise Exception(f"Impossible d'ouvrir le raster {path_resamp}")
 
             # 3.7.1. récupération des informations du raster
             band = dataset.GetRasterBand(1)
             geo_transform = dataset.GetGeoTransform()
-
             # 3.7.2 récupération de la résolution des pixels
             pixel_width = abs(geo_transform[1])  # largeur d'un pixel
             pixel_height = abs(geo_transform[5])  # hauteur d'un pixel
             surface_pixel = pixel_width * pixel_height  # surface d'un pixel en m²
-
             # 3.7.3. lecture des données du raster
             data = band.ReadAsArray()
             nodata_value = band.GetNoDataValue()
@@ -566,7 +516,6 @@ class TraitementWidget(QDialog, params.form_traitement):
 
             # 3.7.5. calcul de la surface totale
             surface_totale = pixels_valides * surface_pixel
-
             # 3.7.6. calcul du volume : somme des hauteurs d'eau valides × surface d'un pixel
             if nodata_value is not None:
                 mask = (~np.isnan(data)) & (data != nodata_value)
@@ -615,13 +564,12 @@ class TraitementWidget(QDialog, params.form_traitement):
         import os
         from datetime import datetime
 
-        self.deciles_calcules = {}
-        self.surface_zoneetude = []
+        self.deciles_calcules = {} # création dictionnaire pour contenir les déciles pour le graph
+        self.surface_zoneetude = [] # création tuple pour contenir les infos de surface pour le graph
 
         try:
 
-            # instauration d'une variable permettant de récupérer la date de création du fichier
-            date_creation = datetime.now().strftime('%Y-%m-%d')
+            date_creation = datetime.now().strftime('%Y-%m-%d') # récupération de la date de création du fichier
 
             # 4.1. création d'un GPKG avec GDAL
             driver = gdal.GetDriverByName('GPKG')
@@ -630,24 +578,19 @@ class TraitementWidget(QDialog, params.form_traitement):
                 raise Exception(f"Impossible de créer le GPKG {gpkg_path}")
             ds = None
 
-            # récupération du raster découpé pour calculer les déciles
-            path_clip = os.path.join(params.temp_path, "temp_layer_clip.tif")
+            path_clip = os.path.join(params.temp_path, "temp_layer_clip.tif") # récup du raster découpé pour calculer les déciles
 
             # vérification de l'existence du fichier
             if not os.path.exists(path_clip):
                 QgsMessageLog.logMessage(f"Le fichier raster {path_clip} n'existe pas", "Top'Eau", Qgis.Warning)
-                # utilisation des valeurs par défaut pour les déciles
-                data_pixels = None
+                data_pixels = None # utilisation des valeurs par défaut pour les déciles
             else:
-                # traitement du raster avec GDAL
                 dataset = gdal.Open(path_clip)
                 if dataset is None:
                     QgsMessageLog.logMessage(f"Impossible d'ouvrir le raster {path_clip}", "Top'Eau", Qgis.Warning)
                     data_pixels = None
-                else:
-                    # récupération des informations du raster
+                else: # récupération des informations du raster
                     band = dataset.GetRasterBand(1)
-                    # lecture des données du raster
                     data_pixels = band.ReadAsArray()
                     nodata_value = band.GetNoDataValue()
                     dataset = None
@@ -655,7 +598,6 @@ class TraitementWidget(QDialog, params.form_traitement):
             # connexion SQLite au GPKG créé pour pouvoir effectuer des requêtes sur ses données (création, insertion...)
             conn = sqlite3.connect(gpkg_path)
             cursor = conn.cursor()
-
             # connexion SpatiaLite pour pouvoir créer et générer des géométries valides
             conn.enable_load_extension(True)
             spatialite_loaded = False
@@ -679,39 +621,25 @@ class TraitementWidget(QDialog, params.form_traitement):
                     QgsMessageLog.logMessage("SpatiaLite non disponible, utilisation des fonctions GPKG natives",
                                              "Top'Eau", Qgis.Info)
 
-            # stockage de l'état de connexion pour les autres fonctions
-            self.spatialite_loaded = spatialite_loaded
+            self.spatialite_loaded = spatialite_loaded # stockage de l'état de connexion pour les autres fonctions
 
-            # 4.1.1. Création des tables système GeoPackage obligatoires
-            # création de la table pour les systèmes de référence : table gpkg_spatial_ref_sys
-            cursor.execute(query.q_1)
-
-            # insertion du SCR Lambert 93 EPSG[2154]
-            cursor.execute(query.q_2, query.params_q2)
-
-            # création de la table contenant le catalogue de contenus : table gpkg_contents
-            cursor.execute(query.q_3)
-
-            # création de la table contenant les informations géométriques : table gpkg_geometry_columns
-            cursor.execute(query.q_4)
-
-            # création de la table contenant les informations liées à l'extension : table gpkg_extensions
-            cursor.execute(query.q_5)
-
-            # création de la table pour les triggers de validation géométrique : table gpkg_data_columns
-            cursor.execute(query.q_6)
+            # 4.1.1. création des tables système GeoPackage obligatoires
+            cursor.execute(query.q_1) # création de la table pour les systèmes de référence : table gpkg_spatial_ref_sys
+            cursor.execute(query.q_2, query.params_q2) # insertion du SCR Lambert 93 EPSG[2154]
+            cursor.execute(query.q_3) # création de la table contenant le catalogue de contenus : table gpkg_contents
+            cursor.execute(query.q_4) # création de la table contenant les info géométriques : table gpkg_geometry_columns
+            cursor.execute(query.q_5) # création de la table contenant les info liées à l'extension : table gpkg_extensions
+            cursor.execute(query.q_6) # création table pour les triggers de validation géométrique : table gpkg_data_columns
 
             # 4.2. récupération d'informations nécessaires à l'insertion de données attributaires dans les tables
-
             # 4.2.1. récupération de la date de création du fichier après sa création
             try:
                 if os.path.exists(gpkg_path):
                     # utilisation la date de création (Windows) ou de modification (Linux)
                     if os.name == 'nt':
-                        # instauration d'une variable adaptée à Windows
-                        creation_timestamp = os.path.getctime(gpkg_path)
-                    else:  # instauration d'une variable adaptée à Linux
-                        creation_timestamp = os.path.getmtime(gpkg_path)
+                        creation_timestamp = os.path.getctime(gpkg_path) # instauration d'une variable adaptée à Windows
+                    else:
+                        creation_timestamp = os.path.getmtime(gpkg_path) # instauration d'une variable adaptée à Linux
 
                     # conversion du timestamp en format de date
                     date_creation = datetime.fromtimestamp(creation_timestamp).strftime('%Y-%m-%d')
@@ -730,15 +658,12 @@ class TraitementWidget(QDialog, params.form_traitement):
                     pixels_valides = data_pixels[mask]
 
                     if len(pixels_valides) > 0:
-                        # calcul des déciles avec numpy
-                        percentiles = np.arange(10, 100, 10)
+                        percentiles = np.arange(10, 100, 10) # calcul des déciles avec numpy
                         valeurs_deciles = np.percentile(pixels_valides, percentiles)
-                        # arrondir les valeurs récupérées
                         for i, percentile in enumerate(percentiles):
-                            deciles[f'decile_{int(percentile)}'] = round(valeurs_deciles[i], 2)
+                            deciles[f'decile_{int(percentile)}'] = round(valeurs_deciles[i], 2) # arrondir les valeurs récupérées
 
                         self.deciles_calcules = deciles
-
 
                         QgsMessageLog.logMessage(f"Déciles calculés avec succès", "Top'Eau", Qgis.Info)
                     else:
@@ -751,10 +676,8 @@ class TraitementWidget(QDialog, params.form_traitement):
                 QgsMessageLog.logMessage(f"Erreur lors du calcul des déciles : {str(decile_error)}", "Top'Eau",
                                              Qgis.Warning)
 
-
             # 4.2.3. récupération de la géométrie du polygone correspondant à la zone d'étude
-            # instauration d'une variable qui servira pour la récupération de la géométrie en WKT
-            # puis en WKB pour être reconnue commme colonne à géométrie valide pour le GPKG
+            # récupération de la géométrie en WKT puis en WKB pour être reconnue commme colonne à géométrie valide pour le GPKG
             geometry_wkt = None
             geometry_wkb = None
             surface_ze = 0.0
@@ -762,31 +685,25 @@ class TraitementWidget(QDialog, params.form_traitement):
             geometry_type = 'MULTIPOLYGON'
             min_x, min_y, max_x, max_y = None, None, None, None
 
-            # configuration de QgsDistanceArea pour récupérer la surface du polygone d'entrée
-            da = QgsDistanceArea()
+            da = QgsDistanceArea() # configuration de QgsDistanceArea pour récupérer la surface du polygone d'entrée
             try:
                 if hasattr(self, 'selected_vecteur_path') and self.selected_vecteur_path is not None:
 
-                    # récupération du SRID de la couche source
                     if hasattr(self.selected_vecteur_path, 'crs'):
-                        srid = self.selected_vecteur_path.crs().postgisSrid()
+                        srid = self.selected_vecteur_path.crs().postgisSrid() # récupération du SRID de la couche source
 
-                    # récupération des entités du vecteur sélectionné
-                    features = self.selected_vecteur_path.getFeatures()
+                    features = self.selected_vecteur_path.getFeatures() # récupération des entités du vecteur sélectionné
 
                     # boucle sur chacune des entités polygonales détectées dans la couche vecteur
                     for feature in features:
-                        # récupération de la géométrie de la première entité
-                        geom = feature.geometry()
-                        # calcul de la surface de l’entité
-                        surface_cal = da.measureArea(geom)
+                        geom = feature.geometry() # récupération de la géométrie de la première entité
+                        surface_cal = da.measureArea(geom) # calcul de la surface de l’entité
                         if geom and not geom.isEmpty():
                             # passage de la géométrie récupérée en WKT pour être retranscrite et lue en table
                             geometry_wkt = geom.asWkt()
                             geometry_wkb = geom.asWkb()
                             surface_ze += surface_cal
-
-                            # Calcul des extent pour gpkg_contents
+                            # calcul des extent pour gpkg_contents
                             bbox = geom.boundingBox()
                             min_x = bbox.xMinimum()
                             min_y = bbox.yMinimum()
@@ -804,13 +721,8 @@ class TraitementWidget(QDialog, params.form_traitement):
             except Exception as geom_error:
                 QgsMessageLog.logMessage(f"Erreur lors de la récupération de la géométrie : {str(geom_error)}","Top'Eau", Qgis.Warning)
 
-            # 4.3. connexion au GPKG
-            # conn = sqlite3.connect(gpkg_path)
-            # cursor = conn.cursor()
-
-            # 4.4. création des tables attributaires à l'intérieur du GPKG
-
-            # 4.4.1. création et insertion des données pour la table "zone_etude"
+            # 4.3. création des tables attributaires à l'intérieur du GPKG
+            # 4.3.1. création et insertion des données pour la table "zone_etude"
             table_creation_sql = '''CREATE TABLE zone_etude (
                             id INTEGER PRIMARY KEY AUTOINCREMENT, 
                             emprise GEOMETRY,
@@ -823,7 +735,6 @@ class TraitementWidget(QDialog, params.form_traitement):
             # ajout des colonnes pour les déciles
             for i in range(10, 100, 10):
                 table_creation_sql += f',\n decile_{i} REAL'
-
             table_creation_sql += '\n )'
 
             cursor.execute(table_creation_sql)
@@ -844,23 +755,21 @@ class TraitementWidget(QDialog, params.form_traitement):
             insert_columns = '''nom, emprise, surface_m2, min_parcelle, max_parcelle, moyenne_parcelle, mediane_parcelle'''
             insert_values = '''?, ?, ?, ?, ?, ?, ?'''
 
-            # ajout des colonnes et valeurs pour les déciles
-            for i in range(10, 100, 10):
+            for i in range(10, 100, 10): # ajout des colonnes et valeurs pour les déciles
                 insert_columns += f', decile_{i}'
                 insert_values += ', ?'
 
-            # création de la couche géométrique si le Wkb est récupéré
-            if geometry_wkb:
-                # Préparation des colonnes et valeurs pour les déciles
+            if geometry_wkb: # création de la couche géométrique si le Wkb est récupéré
+                # préparation des colonnes et valeurs pour les déciles
                 colonnes_deciles = [f'decile_{i}' for i in range(10, 100, 10)]
                 valeurs_deciles = [deciles.get(f'decile_{i}', None) for i in range(10, 100, 10)]
 
-                # Construction de la requête SQL
+                # construction de la requête SQL
                 colonnes_sql = ('emprise, nom, surface_m2, min_parcelle, max_parcelle, moyenne_parcelle, mediane_parcelle, '
                                 + ', '.join(colonnes_deciles))
                 placeholders_sql = '?, ?, ?, ?, ?, ?, ?, ' + ', '.join(['?' for _ in colonnes_deciles])
 
-                # Valeurs à insérer
+                # valeurs à insérer
                 valeurs_insertion = [
                                         geometry_wkb,
                                         self.nomZE.text(),
@@ -874,8 +783,7 @@ class TraitementWidget(QDialog, params.form_traitement):
                 # choix de la méthode d'insertion selon la disponibilité de SpatiaLite
                 if self.spatialite_loaded:
                     # Avec SpatiaLite
-                    cursor.execute(f'''
-                                INSERT INTO zone_etude({colonnes_sql}) 
+                    cursor.execute(f'''INSERT INTO zone_etude({colonnes_sql}) 
                                 VALUES (ST_GeomFromWKB(?, ?), ?, ?, ?, ?, ?, ?, {', '.join(['?' for _ in colonnes_deciles])})
                             ''', [
                         geometry_wkb,
@@ -887,12 +795,8 @@ class TraitementWidget(QDialog, params.form_traitement):
                         round(self.valeur_moy, 2),
                         round(self.valeur_med, 2)
                     ] + valeurs_deciles)
-                else:
-                    # Sans SpatiaLite - insertion directe du WKB
-                    cursor.execute(f'''
-                                INSERT INTO zone_etude({colonnes_sql}) 
-                                VALUES ({placeholders_sql})
-                            ''', valeurs_insertion)
+                else: # sans SpatiaLite : insertion directe du WKB
+                    cursor.execute(f'''INSERT INTO zone_etude({colonnes_sql}) VALUES({placeholders_sql})''', valeurs_insertion)
 
             # 4.4.2. création de la table "hauteur_eau"
             # NB : l'insertion des données se fait dans une fonction dédiée car ce sont des données récupérées en fonction
@@ -910,12 +814,10 @@ class TraitementWidget(QDialog, params.form_traitement):
             cursor.execute(query.q_11, ('hauteur_eau', 'geom', 'MULTIPOLYGON', srid, 0, 0))
 
             # 4.4.3. création de la table "mesure"
-            # NB : la table est vide car c'est celle qui sera utilsiée plus tard pour le requêtage SQL
-            cursor.execute(query.q_12)
+            cursor.execute(query.q_12) # NB : la table est vide car c'est celle qui sera utilisée après pour le requêtage SQL
 
             # 4.4.4. création et insertion des données dans la table "metadata_md1"
-            # NB : les noms de champ et leur complétion ont été définis en fonction des documents qualité créés
-            # par Olivier Schmit
+            # NB : les noms de champ et leur complétion ont été définis en fonction des documents qualité d'Olivier Schmit
             cursor.execute(query.q_13)
             cursor.execute(query.q_14, (
                     '_topeau.gpkg',
@@ -933,12 +835,10 @@ class TraitementWidget(QDialog, params.form_traitement):
                     'Zone d\'étude située au sein d\'un des sites du Projet MAVI porté par l\'Unité Expérimentale INRAE de Saint-Laurent-de-la-Prée',
                     'Résultat de l\'automatisation de traîtements effectués par le Plugin Top\'Eau',
                     'CC-BY-NC-ND'
-                )
-            )
+                ))
 
             # 4.4.5. création et insertion des données dans la table "metadata_md2"
-            # NB : les noms de champ et leur complétion ont été définis en fonction des documents qualité créés
-            # par Olivier Schmit
+            # NB : les noms de champ et leur complétion ont été définis en fonction des documents qualité d'Olivier Schmit
             cursor.execute(query.q_15)
             cursor.execute(query.q_16, query.params_q16)
 
@@ -948,7 +848,6 @@ class TraitementWidget(QDialog, params.form_traitement):
             conn.close()
 
             QgsMessageLog.logMessage(f"GPKG créé : {gpkg_path}", "Top'Eau", Qgis.Info)
-
         except Exception as e:
             QgsMessageLog.logMessage(f"Erreur création GPKG : {str(e)}", "Top'Eau", Qgis.Critical)
             raise e
@@ -966,8 +865,7 @@ class TraitementWidget(QDialog, params.form_traitement):
 
             # 3.7.1. utilisation de l'API GDAL pour la conversion
             try:
-                # ouverture du raster source avec GDAL
-                src_ds = gdal.Open(path_resamp)
+                src_ds = gdal.Open(path_resamp) # ouverture du raster source avec GDAL
                 if src_ds is None:
                     QMessageBox.warning(self, "Erreur", f"Impossible d'ouvrir le fichier source: {path_resamp}")
                     return None
@@ -979,7 +877,6 @@ class TraitementWidget(QDialog, params.form_traitement):
                 ysize = src_ds.RasterYSize
                 geo_transform = src_ds.GetGeoTransform()
                 projection = src_ds.GetProjection()
-
                 # conversion du raster via l'ajout d'un driver GDAL
                 driver = gdal.GetDriverByName('GPKG')
                 if driver is None:
@@ -994,8 +891,7 @@ class TraitementWidget(QDialog, params.form_traitement):
                 # modifier le type de données à Float32 qui est compatible avec GeoPackage
                 dst_ds = driver.Create(gpkg_path, xsize, ysize, 1, gdal.GDT_Float32, options)
 
-                # vérification de la validité du GPKG créé
-                if dst_ds is None:
+                if dst_ds is None: # vérification de la validité du GPKG créé
                     QMessageBox.warning(self, "Erreur", f"Impossible de créer le fichier GeoPackage")
                     return None
 
@@ -1005,24 +901,20 @@ class TraitementWidget(QDialog, params.form_traitement):
                 # copie des données
                 data = band.ReadAsArray(0, 0, xsize, ysize)
                 dst_band = dst_ds.GetRasterBand(1)
-
                 # définition de la valeur nodata puisqu'elle existe et qu'on veut s'en servir pour les calculs de stat
                 nodata_value = band.GetNoDataValue()
                 if nodata_value is not None:
                     dst_band.SetNoDataValue(nodata_value)
 
-                # écriture des données
-                dst_band.WriteArray(data)
-                # traitement du cache
-                dst_ds.FlushCache()
+                dst_band.WriteArray(data) # écriture des données
+                dst_ds.FlushCache() # traitement du cache
                 dst_ds = None
                 src_ds = None
 
-                # vérification de la création du GPKG
-                if os.path.exists(gpkg_path):
+                if os.path.exists(gpkg_path): # vérification de la création du GPKG
                     QgsMessageLog.logMessage(f"GeoPackage créé avec succès: {gpkg_path}", "Top'Eau", Qgis.Success)
     
-                    # ajout d'un fichier de style
+                    # ajout d'un fichier de style pour les rasters
                     qml_file = os.path.join(os.path.dirname(__file__), 'style', 'style_topeau.qml')
                     try:
                         # 1. chargement de la couche raster depuis le GeoPackage
@@ -1036,10 +928,8 @@ class TraitementWidget(QDialog, params.form_traitement):
                         proj.addMapLayer(rlayer, False)
     
                         # 3. liste des sous-couches GDAL
-                        QgsMessageLog.logMessage(
-                            f"Sous-couches détectées pour {table_name}: {rlayer.dataProvider().subLayers()}",
-                            "Top'Eau", Qgis.Info
-                        )
+                        QgsMessageLog.logMessage(f"Sous-couches détectées pour {table_name}: {rlayer.dataProvider().subLayers()}",
+                            "Top'Eau", Qgis.Info )
     
                         # 4. chargement du QML et application à la couche (pour être sûr que le style est valide)
                         rlayer.loadNamedStyle(qml_file)
@@ -1053,7 +943,8 @@ class TraitementWidget(QDialog, params.form_traitement):
                             None                # on passe None : QGIS reprendra le style en mémoire
                         )
                         if err:
-                            QgsMessageLog.logMessage(f"Erreur saveStyleToDatabase pour {table_name} : {err}", "Top'Eau", Qgis.Warning)
+                            QgsMessageLog.logMessage(f"Erreur saveStyleToDatabase pour {table_name} : {err}", "Top'Eau",
+                                                     Qgis.Warning)
                         else:
                             QgsMessageLog.logMessage(f"Symbologie embarquée dans {table_name}", "Top'Eau", Qgis.Info)
     
@@ -1063,7 +954,7 @@ class TraitementWidget(QDialog, params.form_traitement):
                     except Exception as e:
                         QgsMessageLog.logMessage(f"Échec injection style QML : {e}", "Top'Eau", Qgis.Warning)
 
-
+                    # ajout d'un fichier de style pour la couche zone_etude
                     qml_ze = os.path.join(os.path.dirname(__file__), 'style', 'style_ze.qml')
                     try:
                         # 1. chargement de la couche zone_etude depuis le GeoPackage
@@ -1077,10 +968,8 @@ class TraitementWidget(QDialog, params.form_traitement):
                         proj.addMapLayer(rZE, False)
 
                         # 3. liste des sous-couches GDAL
-                        QgsMessageLog.logMessage(
-                            f"Couche zone_etude chargée: {rZE.featureCount()} entités",
-                            "Top'Eau", Qgis.Info
-                        )
+                        QgsMessageLog.logMessage(f"Couche zone_etude chargée: {rZE.featureCount()} entités",
+                            "Top'Eau", Qgis.Info)
 
                         # 4. chargement du QML et application à la couche (pour être sûr que le style est valide)
                         rZE.loadNamedStyle(qml_ze)
@@ -1105,6 +994,7 @@ class TraitementWidget(QDialog, params.form_traitement):
                     except Exception as e:
                         QgsMessageLog.logMessage(f"Échec injection style QML : {e}", "Top'Eau", Qgis.Warning)
 
+                    # ajout d'un fichier de style pour la couche hauteur_eau
                     qml_hauteur = os.path.join(os.path.dirname(__file__), 'style', 'style_hauteureau.qml')
                     try:
                         # 1. chargement de la couche hauteur_eau depuis le GeoPackage
@@ -1118,10 +1008,8 @@ class TraitementWidget(QDialog, params.form_traitement):
                         proj.addMapLayer(rHauteur, False)
 
                         # 3. liste des sous-couches GDAL
-                        QgsMessageLog.logMessage(
-                            f"Couche zone_etude chargée: {rHauteur.featureCount()} entités",
-                            "Top'Eau", Qgis.Info
-                        )
+                        QgsMessageLog.logMessage(f"Couche zone_etude chargée: {rHauteur.featureCount()} entités",
+                            "Top'Eau", Qgis.Info)
 
                         # 4. chargement du QML et application à la couche (pour être sûr que le style est valide)
                         rHauteur.loadNamedStyle(qml_hauteur)
@@ -1165,11 +1053,9 @@ class TraitementWidget(QDialog, params.form_traitement):
     # étape interne à la génération des rasters
     # fonction permettant d'insérer les données dans la table attributaire du GPKG
     # la fonction est répétée automatiquement autant de fois qu'il y a de niveaux d'eau à traiter puisqu'elle est traitée par la boucle
-    def ajouter_donnees_table_gpkg(self,
-                                   gpkg_path, surface_totale, volume_total,
+    def ajouter_donnees_table_gpkg(self, gpkg_path, surface_totale, volume_total,
                                    classe_1_surf, classe_2_surf, classe_3_surf, classe_4_surf, classe_5_surf,
-                                   classe_6_surf, classe_7_surf,
-                                   raster_vectorise_path=None):
+                                   classe_6_surf, classe_7_surf, raster_vectorise_path=None):
 
         from datetime import datetime
 
@@ -1185,8 +1071,7 @@ class TraitementWidget(QDialog, params.form_traitement):
             raster_name = f"{nom_ze}_{niveau_cm}cm_topeau.tif"
 
             # récupération de la géométrie du polygone correspondant à la surface inondée
-            # instauration d'une variable qui servira pour la récupération de la géométrie en WKT
-            geom_raster_wkb = None
+            geom_raster_wkb = None # instauration d'une variable qui servira pour la récupération de la géométrie en WKT
             min_x, min_y, max_x, max_y = None, None, None, None
 
             try:
@@ -1195,29 +1080,23 @@ class TraitementWidget(QDialog, params.form_traitement):
                     vector_layer = QgsVectorLayer(raster_vectorise_path, "temp_vector", "ogr")
 
                     if vector_layer.isValid():
-                        # récupération des entités du vecteur
-                        features = vector_layer.getFeatures()
-
-                        # création d'une géométrie unifiée de toutes les entités
-                        all_geoms = []
+                        features = vector_layer.getFeatures() # récupération des entités du vecteur
+                        all_geoms = [] # création d'une géométrie unifiée de toutes les entités
                         for feature in features:
                             geom = feature.geometry()
                             if geom and not geom.isEmpty():
                                 all_geoms.append(geom)
 
                         if all_geoms:
-                            # fusion de toutes les géométries en une seule
-                            if len(all_geoms) == 1:
+                            if len(all_geoms) == 1: # fusion de toutes les géométries en une seule
                                 unified_geom = all_geoms[0]
                             else:
                                 unified_geom = QgsGeometry.unaryUnion(all_geoms)
 
                             if unified_geom and not unified_geom.isEmpty():
-                                # conversion en MULTIPOLYGON si nécessaire
-                                if unified_geom.wkbType() == QgsWkbTypes.Polygon:
+                                if unified_geom.wkbType() == QgsWkbTypes.Polygon: # conversion en MULTIPOLYGON si nécessaire
                                     unified_geom.convertToMultiType()
                                 geom_raster_wkb = unified_geom.asWkb()
-
                                 # calcul des extent pour mise à jour de gpkg_contents
                                 bbox = unified_geom.boundingBox()
                                 min_x = bbox.xMinimum()
@@ -1244,7 +1123,6 @@ class TraitementWidget(QDialog, params.form_traitement):
             # 3.7.1. connexion SQLite directe au GeoPackage
             conn = sqlite3.connect(gpkg_path)
             cursor = conn.cursor()
-
             # chargement de SpatiaLite pour cette connexion
             spatialite_loaded = False
             conn.enable_load_extension(True)
@@ -1263,18 +1141,16 @@ class TraitementWidget(QDialog, params.form_traitement):
                     spatialite_loaded = False
                     QgsMessageLog.logMessage("SpatiaLite non disponible pour cette connexion", "Top'Eau", Qgis.Info)
 
+
+            self.surface_hauteur = {} # dictionnaire créé pour accueillir les valeurs de surface pour le graph
+            self.sommesurf_hauteur = {} # dictionnaire créé pour accueillir les valeurs de surfaces >10cm pour le graph
+
             # 3.7.2. insertion du contenu dans la table
-
-            self.surface_hauteur = {}
-            self.sommesurf_hauteur = {}
-
             if geom_raster_wkb:
-                if spatialite_loaded:
-                    # test de validité avec SpatiaLite
+                if spatialite_loaded: # test de validité avec SpatiaLite
                     try:
                         cursor.execute("SELECT ST_IsValid(ST_GeomFromWKB(?, ?))", (geom_raster_wkb, 2154))
                         is_valid = cursor.fetchone()[0]
-
                         if not is_valid:
                             QgsMessageLog.logMessage("Géométrie invalide détectée, tentative de réparation", "Top'Eau",
                                                      Qgis.Warning)
@@ -1304,8 +1180,7 @@ class TraitementWidget(QDialog, params.form_traitement):
                         round(classe_7_surf, 2),
                         raster_name
                     ))
-                else:
-                    # insertion directe avec les fonctions GPKG natives (géométrie en blob)
+                else: # insertion directe avec les fonctions GPKG natives (géométrie en blob)
                     cursor.execute(query.q_18, (
                         geom_raster_wkb,
                         round(self.current_level, 2),
@@ -1337,8 +1212,7 @@ class TraitementWidget(QDialog, params.form_traitement):
                 self.surface_hauteur = surface_totale
                 self.sommesurf_hauteur = classe_3_surf + classe_4_surf + classe_5_surf + classe_6_surf + classe_7_surf
 
-            else:
-                # insertion sans géométrie si elle n'est pas disponible
+            else: # insertion sans géométrie si elle n'est pas disponible
                 cursor.execute(query.q_20, (
                     round(self.current_level, 2),
                     self.nomZE.text(),
@@ -1365,7 +1239,7 @@ class TraitementWidget(QDialog, params.form_traitement):
             if 'conn' in locals():
                 conn.close()
 
-    #fonction permettant de créer une couche vectorielle avec GDAL pour créer les entités polygonales des surfaces inondées
+    # fonction permettant de créer une couche vectorielle avec GDAL pour créer les entités polygonales des surfaces inondées
     def creer_couche_vecteur_gdal(self, gpkg_path, layer_name, geom_type, fields_dict):
 
         driver = ogr.GetDriverByName('GPKG')
@@ -1374,7 +1248,6 @@ class TraitementWidget(QDialog, params.form_traitement):
         # création de la couche avec le bon SCR
         srs = osr.SpatialReference()
         srs.ImportFromEPSG(2154)
-
         layer = ds.CreateLayer(layer_name, srs, geom_type)
 
         # ajout des champs
@@ -1385,13 +1258,11 @@ class TraitementWidget(QDialog, params.form_traitement):
         ds = None
         return True
 
-
     # 5. fonction pour charger automatiquement les tables et rasters du GPKG dans QGIS
     def charger_gpkg_dans_qgis(self, gpkg_path, couches_generees):
 
         try:
-            # référence à l'interface QGIS
-            from qgis.utils import iface
+            from qgis.utils import iface # référence à l'interface QGIS
 
             # 5.1. création d'un groupe pour organiser les couches
             nom_ze = self.nomZE.text()
@@ -1403,14 +1274,11 @@ class TraitementWidget(QDialog, params.form_traitement):
 
             for table in tables_attributaires:
                 try:
-                    # 5.2.1. création d'un URI pour les tables du GPKG
-                    uri = f"{gpkg_path}|layername={table}"
-
-                    # 5.2.2. création de la couche
-                    layer = QgsVectorLayer(uri, f"{table}", "ogr")
+                    uri = f"{gpkg_path}|layername={table}" # création d'un URI pour les tables du GPKG
+                    layer = QgsVectorLayer(uri, f"{table}", "ogr") # création de la couche
 
                     if layer.isValid():
-                        # 5.2.3. ajout de la couche au projet dans le groupe
+                        # ajout de la couche au projet dans le groupe
                         QgsProject.instance().addMapLayer(layer, False)
                         group.addLayer(layer)
                         QgsMessageLog.logMessage(f"Table {table} chargée avec succès", "Top'Eau", Qgis.Info)
@@ -1423,19 +1291,13 @@ class TraitementWidget(QDialog, params.form_traitement):
 
             # 5.3. chargement des rasters
 
-            # 5.3.1. récupération de la liste des rasters dans le GPKG
-            rasters = self.lister_rasters_gpkg(gpkg_path)
-
+            rasters = self.lister_rasters_gpkg(gpkg_path) # récupération de la liste des rasters dans le GPKG
             for raster_name in rasters:
                 try:
-                    # 5.3.2. création d'un URI pour les rasters du GPKG
-                    uri = f"GPKG:{gpkg_path}:{raster_name}"
-
-                    # 5.3.3. création de la couche raster
-                    layer = QgsRasterLayer(uri, raster_name, "gdal")
-
+                    uri = f"GPKG:{gpkg_path}:{raster_name}" # création d'un URI pour les rasters du GPKG
+                    layer = QgsRasterLayer(uri, raster_name, "gdal") # création de la couche raster
+                    # ajout de la couche au projet dans le groupe
                     if layer.isValid():
-                        # 5.3.4. ajout de la couche au projet dans le groupe
                         QgsProject.instance().addMapLayer(layer, False)
                         group.addLayer(layer)
 
@@ -1448,8 +1310,7 @@ class TraitementWidget(QDialog, params.form_traitement):
                     QgsMessageLog.logMessage(f"Erreur lors du chargement du raster {raster_name}: {str(e)}", "Top'Eau",
                                              Qgis.Warning)
 
-            QMessageBox.information(self, "Chargement terminé",
-                                    f"Le GPKG a été chargé avec succès dans QGIS.\n"
+            QMessageBox.information(self, "Chargement terminé", f"Le GPKG a été chargé avec succès dans QGIS.\n"
                                     f"Tables et rasters disponibles dans le groupe '{nom_ze}'.")
 
         except Exception as e:
@@ -1457,21 +1318,17 @@ class TraitementWidget(QDialog, params.form_traitement):
             QMessageBox.warning(self, "Erreur", f"Erreur lors du chargement du GPKG:\n{str(e)}")
 
 
-    # fonction nécessaire à la fonction précédente
-    # fonction permettant de lister les rasters présents dans le GPKG
+    # fonction nécessaire à la fonction précédente = permet de lister les rasters présents dans le GPKG
     def lister_rasters_gpkg(self, gpkg_path):
 
         rasters = []
         try:
-            # connexion au GPKG pour lister les rasters
             conn = sqlite3.connect(gpkg_path)
             cursor = conn.cursor()
-
-            # requête pour récupérer les tables raster
             cursor.execute("""
                 SELECT table_name FROM gpkg_contents 
                 WHERE data_type = 'tiles' OR data_type = '2d-gridded-coverage'
-            """)
+            """) # requête pour récupérer les tables raster
 
             results = cursor.fetchall()
             rasters = [row[0] for row in results]
