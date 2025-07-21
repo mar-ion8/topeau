@@ -10,6 +10,7 @@ from qgis.core import Qgis, QgsMessageLog
 from qgis import processing
 from qgis.core import QgsRasterLayer
 import os
+from osgeo import osr
 # import des librairies nécessaires à la lecture de données géospatiales
 import json
 # import librairie nécessaire à certains calculs
@@ -327,12 +328,8 @@ class TraitementWidget(QDialog, params.form_traitement):
 
             date_creation = datetime.now().strftime('%Y-%m-%d') # récupération de la date de création du fichier
 
-            # création d'un GPKG avec GDAL
-            driver = gdal.GetDriverByName('GPKG')
-            ds = driver.Create(gpkg_path, 1, 1, 1, gdal.GDT_Byte)
-            if ds is None:
-                raise Exception(f"Impossible de créer le GPKG {gpkg_path}")
-            ds = None
+            if os.path.exists(gpkg_path): # vérification de l'unicité du GPKG pour éviter tout conflit
+                os.remove(gpkg_path)
 
             path_clip = os.path.join(params.temp_path, "temp_layer_clip.tif") # récup du raster découpé pour calculer les déciles
 
@@ -384,8 +381,8 @@ class TraitementWidget(QDialog, params.form_traitement):
             cursor.execute(query.q_5) # création de la table contenant les info liées à l'extension : table gpkg_extensions
             cursor.execute(query.q_6) # création table pour les triggers de validation géométrique : table gpkg_data_columns
 
-            # 4.2. récupération d'informations nécessaires à l'insertion de données attributaires dans les tables
-            # 4.2.1. récupération de la date de création du fichier après sa création
+            # récupération d'informations nécessaires à l'insertion de données attributaires dans les tables
+            # récupération de la date de création du fichier après sa création
             try:
                 if os.path.exists(gpkg_path):
                     # utilisation la date de création (Windows) ou de modification (Linux)
