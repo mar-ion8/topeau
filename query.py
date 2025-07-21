@@ -257,3 +257,18 @@ q_20 = ''' INSERT INTO hauteur_eau
                               nom_fichier) 
                               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) '''
 
+q_21 = """
+    SELECT table_name FROM gpkg_contents 
+    WHERE data_type = 'tiles' OR data_type = '2d-gridded-coverage'
+    """
+
+q_22 = '''CREATE TABLE zone_etude (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT, 
+                            emprise GEOMETRY,
+                            nom TEXT,
+                            surface_m2 REAL,
+                            min_parcelle REAL,
+                            max_parcelle REAL,
+                            moyenne_parcelle REAL,
+                            mediane_parcelle REAL'''
+
