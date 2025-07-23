@@ -489,7 +489,7 @@ class TraitementWidget(QDialog, params.form_traitement):
 
                 # valeurs à insérer
                 valeurs_insertion = [
-                                        geometry_wkb, self.nomZE.text(), surface_ze,
+                                        geometry_wkb, self.nomZE.text(), round(surface_ze, 2),
                                         round(self.valeur_min, 2), round(self.valeur_max, 2),
                                         round(self.valeur_moy, 2), round(self.valeur_med, 2)
                                     ] + valeurs_deciles
@@ -500,7 +500,7 @@ class TraitementWidget(QDialog, params.form_traitement):
                     cursor.execute(f'''INSERT INTO zone_etude({colonnes_sql}) 
                                 VALUES (ST_GeomFromWKB(?, ?), ?, ?, ?, ?, ?, ?, {', '.join(['?' for _ in colonnes_deciles])})
                             ''', [
-                        geometry_wkb, srid, self.nomZE.text(), surface_ze,
+                        geometry_wkb, srid, self.nomZE.text(), round(surface_ze,2),
                         round(self.valeur_min, 2), round(self.valeur_max, 2),
                         round(self.valeur_moy, 2), round(self.valeur_med, 2)
                     ] + valeurs_deciles)
@@ -527,9 +527,10 @@ class TraitementWidget(QDialog, params.form_traitement):
 
             # création et insertion des données dans la table "metadata_md1"
             # NB : les noms de champ et leur complétion ont été définis en fonction des documents qualité d'Olivier Schmit
+            nom_ze = self.nomZE.text()
             cursor.execute(query.q_13)
             cursor.execute(query.q_14, (
-                    '_topeau.gpkg',
+                    f'{nom_ze}_topeau.gpkg',
                     'Variables hydriques, mesure du niveau d\'eau, simulation inondation, parcelles, marais littoraux atlantiques, INRAE',
                     'Marion Bleuse',
                     'Julien Ancelin',
