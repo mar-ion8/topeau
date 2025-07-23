@@ -24,18 +24,10 @@ import subprocess
 from osgeo import gdal, ogr, osr
 import sqlite3
 # import fichiers de code supplémentaires contenant fonctions/variables
-from . import query
-from . import visu
-from . import params
-from . import generation
+from . import query, visu, params, generation
 # import des fonctinos une à une pour les utiliser indépendamment les unes des autres dans la boucle
-from .generation import decouper_raster
-from .generation import calcul_niveau_eau
-from .generation import resample_raster
-from .generation import vectoriser_raster
-from .generation import calculer_stats_raster
-from .generation import ajouter_donnees_table_gpkg
-from .generation import ajouter_raster_au_gpkg
+from .generation import (decouper_raster, calcul_niveau_eau, resample_raster, vectoriser_raster,
+                            calculer_stats_raster, ajouter_donnees_table_gpkg, ajouter_raster_au_gpkg)
 
 # mise en place de la classe TraitementWidget pour regrouper l'ensemble des fonctions relatives aux traitements à réaliser
 class TraitementWidget(QDialog, params.form_traitement):
@@ -178,10 +170,7 @@ class TraitementWidget(QDialog, params.form_traitement):
 
         # extraction des valeurs depuis les attributs de la couche
         feature = next(output_layer.getFeatures())
-        self.valeur_min = feature['_min']
-        self.valeur_max = feature['_max']
-        self.valeur_moy = feature['_mean']
-        self.valeur_med = feature['_median']
+        self.valeur_min, self.valeur_max, self.valeur_moy, self.valeur_med = feature['_min'], feature['_max'], feature['_mean'], feature['_median']
 
         # affichage du résultat dans l'interface du Plugin pour que l'utilisateur connaisse la valeur
         self.minLabel.setText(f"{self.valeur_min:.2f}m")
@@ -264,7 +253,7 @@ class TraitementWidget(QDialog, params.form_traitement):
 
             # création d'un fichier unique pour chaque niveau d'eau
             nom_ze = self.nomZE.text()  # récupération du nom renseigné par l'utilisateur
-            niveau_cm = int(self.current_level * 100)  # conversion en centimètres pour le nom du fichier
+            niveau_cm = int(round(self.current_level * 100))  # conversion en centimètres pour le nom du fichier
             output_name = f"{nom_ze}_{niveau_cm}cm_topeau"  # création d'un nom de fichier unique pour chaque fichier
 
             niveau_eau = self.current_level  # définition de la variable utilisée dans generation.py
@@ -414,17 +403,12 @@ class TraitementWidget(QDialog, params.form_traitement):
                             deciles[f'decile_{int(percentile)}'] = round(valeurs_deciles[i], 2) # arrondir les valeurs récupérées
 
                         self.deciles_calcules = deciles
-
                         QgsMessageLog.logMessage(f"Déciles calculés avec succès", "Top'Eau", Qgis.Info)
-                    else:
-                        QgsMessageLog.logMessage(f"Aucune valeur valide pour le calcul des déciles", "Top'Eau",
-                                                     Qgis.Warning)
-                else:
-                    QgsMessageLog.logMessage(f"Aucune donnée de pixels fournie pour le calcul des déciles",
-                                                 "Top'Eau", Qgis.Warning)
+
+                    else: QgsMessageLog.logMessage(f"Aucune valeur valide pour le calcul des déciles", "Top'Eau", Qgis.Warning)
+                else: QgsMessageLog.logMessage(f"Aucune donnée de pixels fournie pour le calcul des déciles", "Top'Eau", Qgis.Warning)
             except Exception as decile_error:
-                QgsMessageLog.logMessage(f"Erreur lors du calcul des déciles : {str(decile_error)}", "Top'Eau",
-                                             Qgis.Warning)
+                QgsMessageLog.logMessage(f"Erreur lors du calcul des déciles : {str(decile_error)}", "Top'Eau", Qgis.Warning)
 
             # récupération de la géométrie en WKT puis en WKB pour être reconnue commme colonne à géométrie valide pour le GPKG
             geometry_wkt = None
@@ -453,19 +437,13 @@ class TraitementWidget(QDialog, params.form_traitement):
                             surface_ze += surface_cal
                             # calcul des extent pour gpkg_contents
                             bbox = geom.boundingBox()
-                            min_x = bbox.xMinimum()
-                            min_y = bbox.yMinimum()
-                            max_x = bbox.xMaximum()
-                            max_y = bbox.yMaximum()
+                            min_x, min_y, max_x, max_y = bbox.xMinimum(), bbox.yMinimum(), bbox.xMaximum(), bbox.yMaximum()
 
                             QgsMessageLog.logMessage(f"Géométrie récupérée pour l'emprise", "Top'Eau", Qgis.Info)
                             break
-                        else:
-                            QgsMessageLog.logMessage(f"Géométrie vide dans selected_vecteur", "Top'Eau", Qgis.Warning)
-                    else:
-                        QgsMessageLog.logMessage(f"Aucune entité trouvée dans selected_vecteur", "Top'Eau", Qgis.Warning)
-                else:
-                    QgsMessageLog.logMessage(f"Variable selected_vecteur non disponible", "Top'Eau", Qgis.Warning)
+                        else: QgsMessageLog.logMessage(f"Géométrie vide dans selected_vecteur", "Top'Eau", Qgis.Warning)
+                    else: QgsMessageLog.logMessage(f"Aucune entité trouvée dans selected_vecteur", "Top'Eau", Qgis.Warning)
+                else: QgsMessageLog.logMessage(f"Variable selected_vecteur non disponible", "Top'Eau", Qgis.Warning)
             except Exception as geom_error:
                 QgsMessageLog.logMessage(f"Erreur lors de la récupération de la géométrie : {str(geom_error)}","Top'Eau", Qgis.Warning)
 
@@ -511,13 +489,9 @@ class TraitementWidget(QDialog, params.form_traitement):
 
                 # valeurs à insérer
                 valeurs_insertion = [
-                                        geometry_wkb,
-                                        self.nomZE.text(),
-                                        surface_ze,
-                                        round(self.valeur_min, 2),
-                                        round(self.valeur_max, 2),
-                                        round(self.valeur_moy, 2),
-                                        round(self.valeur_med, 2)
+                                        geometry_wkb, self.nomZE.text(), surface_ze,
+                                        round(self.valeur_min, 2), round(self.valeur_max, 2),
+                                        round(self.valeur_moy, 2), round(self.valeur_med, 2)
                                     ] + valeurs_deciles
 
                 # choix de la méthode d'insertion selon la disponibilité de SpatiaLite
@@ -526,14 +500,9 @@ class TraitementWidget(QDialog, params.form_traitement):
                     cursor.execute(f'''INSERT INTO zone_etude({colonnes_sql}) 
                                 VALUES (ST_GeomFromWKB(?, ?), ?, ?, ?, ?, ?, ?, {', '.join(['?' for _ in colonnes_deciles])})
                             ''', [
-                        geometry_wkb,
-                        srid,
-                        self.nomZE.text(),
-                        surface_ze,
-                        round(self.valeur_min, 2),
-                        round(self.valeur_max, 2),
-                        round(self.valeur_moy, 2),
-                        round(self.valeur_med, 2)
+                        geometry_wkb, srid, self.nomZE.text(), surface_ze,
+                        round(self.valeur_min, 2), round(self.valeur_max, 2),
+                        round(self.valeur_moy, 2), round(self.valeur_med, 2)
                     ] + valeurs_deciles)
                 else: # sans SpatiaLite : insertion directe du WKB
                     cursor.execute(f'''INSERT INTO zone_etude({colonnes_sql}) VALUES({placeholders_sql})''', valeurs_insertion)
@@ -568,10 +537,10 @@ class TraitementWidget(QDialog, params.form_traitement):
                     'marion.bleuse8@gmail.com / julien.ancelin@inrae.fr / lilia.mzali@inrae.fr',
                     'Se référer à la fenêtre \'A propos\' du Plugin Top\'Eau',
                     date_creation,
-                    'GeoPackage contenant des fichiers raster et attributaires',
+                    'GeoPackage contenant des fichiers rasters, vecteurs et tabulaires',
                     'GeoPackage (.gpkg)',
                     'Français',
-                    'Se référer à la notice d\'utilisation du Plugin disponible via la fenêtre \'Notice\' du Plugin Top\'Eau',
+                    'Se référer à la documentation du Plugin disponible via la fenêtre \'Aide\' du Plugin Top\'Eau',
                     'Zone d\'étude située au sein d\'un des sites du Projet MAVI porté par l\'Unité Expérimentale INRAE de Saint-Laurent-de-la-Prée',
                     'Résultat de l\'automatisation de traîtements effectués par le Plugin Top\'Eau',
                     'CC-BY-NC-ND'
@@ -634,12 +603,10 @@ class TraitementWidget(QDialog, params.form_traitement):
                         QgsProject.instance().addMapLayer(layer, False)
                         group.addLayer(layer)
                         QgsMessageLog.logMessage(f"Table {table} chargée avec succès", "Top'Eau", Qgis.Info)
-                    else:
-                        QgsMessageLog.logMessage(f"Impossible de charger la table {table}", "Top'Eau", Qgis.Warning)
+                    else: QgsMessageLog.logMessage(f"Impossible de charger la table {table}", "Top'Eau", Qgis.Warning)
 
                 except Exception as e:
-                    QgsMessageLog.logMessage(f"Erreur lors du chargement de la table {table}: {str(e)}", "Top'Eau",
-                                             Qgis.Warning)
+                    QgsMessageLog.logMessage(f"Erreur lors du chargement de la table {table}: {str(e)}", "Top'Eau", Qgis.Warning)
 
             # chargement des rasters
             rasters = self.lister_rasters_gpkg(gpkg_path) # récupération de la liste des rasters dans le GPKG
@@ -653,13 +620,10 @@ class TraitementWidget(QDialog, params.form_traitement):
                         group.addLayer(layer)
 
                         QgsMessageLog.logMessage(f"Raster {raster_name} chargé avec succès", "Top'Eau", Qgis.Info)
-                    else:
-                        QgsMessageLog.logMessage(f"Impossible de charger le raster {raster_name}", "Top'Eau",
-                                                 Qgis.Warning)
+                    else: QgsMessageLog.logMessage(f"Impossible de charger le raster {raster_name}", "Top'Eau", Qgis.Warning)
 
                 except Exception as e:
-                    QgsMessageLog.logMessage(f"Erreur lors du chargement du raster {raster_name}: {str(e)}", "Top'Eau",
-                                             Qgis.Warning)
+                    QgsMessageLog.logMessage(f"Erreur lors du chargement du raster {raster_name}: {str(e)}", "Top'Eau", Qgis.Warning)
 
             QMessageBox.information(self, "Chargement terminé", f"Le GPKG a été chargé avec succès dans QGIS.\n"
                                     f"Tables et rasters disponibles dans le groupe '{nom_ze}'.")
