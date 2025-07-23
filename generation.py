@@ -32,12 +32,10 @@ from . import visu
 from . import params
 from . import traitement
 
-
 # fonction permettant de découper le raster en entrée
 def decouper_raster(selected_raster, selected_vecteur):
 
     path_clip = os.path.join(params.temp_path, "temp_layer_clip.tif")  # création d'un fichier temporaire
-
     # utilisation de l'algorithme GDAL "Découper un raster selon une couche de masque"
     processing.run("gdal:cliprasterbymasklayer", {
         'INPUT': selected_raster,  # variable récupérant le raster sélectionné par l'utilisateur
@@ -85,7 +83,6 @@ def calcul_niveau_eau(niveau_eau):
     })
 
     path_reclass = os.path.join(params.temp_path,f"reclass_{int(niveau_eau * 100)}.tif")  # fichier temporaire pour la reclassif
-
     # utilisation de l'outil natif "Reclassification" pour supprimer les valeurs négatives
     processing.run("native:reclassifybytable", {
         'INPUT_RASTER': path_diff,
@@ -139,7 +136,6 @@ def resample_raster(input_path, output_name, resolution):
     '''
 
     path_resamp = os.path.join(params.temp_path, f"{output_name}_resamp.tif")  # fichier final du raster rééchantillonné
-
     # utilisation de l'algorithme GRASS "r.resamp.Stats" pour le ré-échantillonnage
     processing.run("grass:r.resamp.stats", {
         'input': layer_reclass,
@@ -153,7 +149,6 @@ def resample_raster(input_path, output_name, resolution):
         'GRASS_RASTER_FORMAT_OPT': '',
         'GRASS_RASTER_FORMAT_META': ''
     })
-
     return path_resamp if os.path.exists(path_resamp) else None # calcul automatique de la surface après création du raster
 
 # fonction permettant de vectoriser le raster généré afin d'en récupérer la géométrie
@@ -164,7 +159,6 @@ def vectoriser_raster(path_resamp, output_name):
             raise Exception(f"Impossible d'ouvrir le raster {path_resamp}")
 
         raster_vectorise = os.path.join(params.temp_path, f"{output_name}_vecteur.gpkg")  # chemin temp pour le vecteur
-
         # utilisation de l'algorithme GDAL "Polygoniser" pour passer le raster généré en vecteur
         processing.run("gdal:polygonize", {
             'INPUT': path_resamp,
@@ -295,16 +289,10 @@ def ajouter_donnees_table_gpkg(gpkg_path, surface_totale, volume_total,
 
                             QgsMessageLog.logMessage(f"Géométrie récupérée pour la surface inondée", "Top'Eau",
                                                      Qgis.Info)
-                        else:
-                            QgsMessageLog.logMessage(f"Échec de l'union des géométries", "Top'Eau", Qgis.Warning)
-                    else:
-                        QgsMessageLog.logMessage(f"Aucune géométrie valide trouvée", "Top'Eau", Qgis.Warning)
-                else:
-                    QgsMessageLog.logMessage(f"Couche vecteur invalide: {raster_vectorise_path}", "Top'Eau",
-                                             Qgis.Warning)
-            else:
-                QgsMessageLog.logMessage(f"Chemin du vecteur non fourni ou inexistant", "Top'Eau", Qgis.Warning)
-
+                        else: QgsMessageLog.logMessage(f"Échec de l'union des géométries", "Top'Eau", Qgis.Warning)
+                    else: QgsMessageLog.logMessage(f"Aucune géométrie valide trouvée", "Top'Eau", Qgis.Warning)
+                else: QgsMessageLog.logMessage(f"Couche vecteur invalide: {raster_vectorise_path}", "Top'Eau", Qgis.Warning)
+            else: QgsMessageLog.logMessage(f"Chemin du vecteur non fourni ou inexistant", "Top'Eau", Qgis.Warning)
         except Exception as geom_error:
             QgsMessageLog.logMessage(f"Erreur lors de la récupération de la géométrie : {str(geom_error)}",
                                      "Top'Eau", Qgis.Warning)
