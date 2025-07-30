@@ -65,11 +65,9 @@ Pour installer le Plugin depuis GitHub :
 2. La valeur maximale à simuler pour l'étude
 3. La résolution
 
-<div style="overflow:auto;">
-    <img 
-	src="assets/img/resol.png" 
-	alt="resolutions_donnees_raster" width="250" style="float:left; margin-right: 15px;"/>
-    <p align="justify">Une dimension technique importante à prendre en compte lors de l'utilisation du Plugin est la <strong>résolution du raster généré</strong>, et surtout du raster en entrée. En effet, il n'est pas dérangeant de générer un raster avec une trop grosse résolution, mais générer un raster avec une résolution trop basse (donc plus basse que la donnée en entrée) renvoie une donnée inutilisable et impossible à visualiser, sans pour autant renvoyer de message d'erreur à l'utilisateur. Il est donc essentiel que l'utilisateur connaisse la résolution du raster qu'il donne en entrée au Plugin. Pour les référentiels altimétriques les plus couramment utilisés, la résolution est indiquée ci-contre.</p>
+<div style="display: flex; align-items: flex-start; gap: 15px;">
+    <img src="assets/img/resol.png" alt="resolutions_donnees_raster" width="300" style="flex-shrink: 0;"/>
+    <p style="text-align: justify; margin: 0;">Une dimension technique importante à prendre en compte lors de l'utilisation du Plugin est la <strong>résolution du raster généré</strong>, et surtout du raster en entrée. En effet, il n'est pas dérangeant de générer un raster avec une trop grosse résolution, mais générer un raster avec une résolution trop basse (donc plus basse que la donnée en entrée) renvoie une donnée inutilisable et impossible à visualiser, sans pour autant renvoyer de message d'erreur à l'utilisateur. Il est donc essentiel que l'utilisateur connaisse la résolution du raster qu'il donne en entrée au Plugin. Pour les référentiels altimétriques les plus couramment utilisés, la résolution est indiquée ci-contre.</p>
 </div>
 
 4. Le pas de génération
