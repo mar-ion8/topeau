@@ -84,7 +84,8 @@ Pour installer le Plugin depuis GitHub :
 
 #### Arborescence et fichiers de code 
 
-
+<p align="justify"> Les fichiers de code fonctionnent entre eux selon une logique d'appel : le fichier topeau.py (en rouge sur le schéma ci-dessous) per met de structurer l'extension et son interface graphique dans la barre d'outils de QGIS, en créant une liste déroulante d'interfaces numérotées. Chaque étape proposée correspond à un appel de fichier différent (en bleu sur le schéma ci-dessous). Chacun de ces fichiers est lié à un fichier .ui qui construit l'interface graphique de la fenêtre. Pour les étapes au sein desquelles les traitements sont simples et/ou limités, un fichier suffit. Par contre, certaines étapes de l'analyse (comme l'analyse raster) sont bien plus longues et font appel à un grand nombre de fonctions. En ce sens, certaines fonctions ont été regroupées dans des fichiers .py (en bleu sur le schéma ci-dessous) qui sont appelés au besoin par les autres fonctions. </p>
+<img src="assets/img/orga.png" alt="arbo_fichiers"/>
 
 #### Modules Python
 
