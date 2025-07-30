@@ -1,5 +1,22 @@
 # <p align="center">Documentation - Plugin Top'Eau <br> <img src="icon.png" alt="logo" width="100"/></p>
 
+# Sommaire
+
+- [Installation du Plugin] #installation-du-plugin
+- [Présentation du Plugin Top'Eau] #présentation-du-plugin-topeau
+	- [Genèse du Plugin] #genèse-du-plugin
+	- [Quels utilisateurs?] #quels-utilisateurs
+	- [Structuration du Plugin] #structuration-du-plugin
+- [Utilisation] #utilisation
+	- [Simulation de niveaux d'eau au sein d'une zone d'étude] #simulation-de-niveaux-deau-au-sein-dune-zone-détude
+	- [Analyse biodiversité] #analyse-biodiversité
+	- [Indicateurs et variables hydriques] #indicateurs-et-variables-hydriques
+	- [Aspect technique] #aspect-technique
+- [Annexes] #annexes
+	- [Collaborateurs] #collaborateurs
+	- [Sources] #sources
+
+
 ## Installation du Plugin
 
 <p align='justify'>
@@ -88,7 +105,7 @@ Pour installer le Plugin depuis GitHub :
 <tr>
 <td width="30%"><img src="assets/img/resol.png" alt="resolutions_donnees_raster" width="250"/></td>
 <td width="70%"><p align="justify">Une dimension technique importante à prendre en compte lors de l'utilisation du Plugin est la <strong>résolution du raster généré</strong>, et surtout du raster en entrée. En effet, il n'est pas dérangeant de générer un raster avec une trop grosse résolution, mais générer un raster avec une résolution trop basse (donc plus basse que la donnée en entrée) renvoie une donnée inutilisable et impossible à visualiser, sans pour autant renvoyer de message d'erreur à l'utilisateur. Il est donc essentiel que l'utilisateur connaisse la résolution du raster qu'il donne en entrée au Plugin. Pour les référentiels altimétriques les plus couramment utilisés, la résolution est indiquée ci-contre.</p>
-<img src="assets/img/pas2.png" alt="valeur_resol_utilisateur"/></td>
+<img src="assets/img/resol2.png" alt="valeur_resol_utilisateur"/></td>
 </tr>
 </table>
 
