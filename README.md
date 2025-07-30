@@ -65,11 +65,8 @@ Pour installer le Plugin depuis GitHub :
 2. La valeur maximale à simuler pour l'étude
 3. La résolution
 
-<img src="assets/img/resol.png" alt="resolutions_donnees_raster" width="300" style="float: left; margin-right: 15px; margin-bottom: 10px;"/>
-
-Une dimension technique importante à prendre en compte lors de l'utilisation du Plugin est la **résolution du raster généré**, et surtout du raster en entrée. En effet, il n'est pas dérangeant de générer un raster avec une trop grosse résolution, mais générer un raster avec une résolution trop basse (donc plus basse que la donnée en entrée) renvoie une donnée inutilisable et impossible à visualiser, sans pour autant renvoyer de message d'erreur à l'utilisateur. Il est donc essentiel que l'utilisateur connaisse la résolution du raster qu'il donne en entrée au Plugin. Pour les référentiels altimétriques les plus couramment utilisés, la résolution est indiquée ci-contre.
-
-<div style="clear: both;"></div>
+| ![resolutions_donnees_raster](assets/img/resol.png) | Une dimension technique importante à prendre en compte lors de l'utilisation du Plugin est la **résolution du raster généré**, et surtout du raster en entrée. En effet, il n'est pas dérangeant de générer un raster avec une trop grosse résolution, mais générer un raster avec une résolution trop basse (donc plus basse que la donnée en entrée) renvoie une donnée inutilisable et impossible à visualiser, sans pour autant renvoyer de message d'erreur à l'utilisateur. Il est donc essentiel que l'utilisateur connaisse la résolution du raster qu'il donne en entrée au Plugin. Pour les référentiels altimétriques les plus couramment utilisés, la résolution est indiquée ci-contre. |
+|:---:|:---|
 
 4. Le pas de génération
 
