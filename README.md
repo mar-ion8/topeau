@@ -85,19 +85,19 @@ Pour installer le Plugin depuis GitHub :
 
 #### Données et variables en entrée
 
-<p><strong>Les données</strong></p>
+<p><strong><font color='#16537e'>Les données</font></strong></p>
 
-1. Fichier raster relatif à l'élévation du terrain
+1. <font color='#134f5c'>Fichier raster relatif à l'élévation du terrain</font>
 
-2. Fichier vecteur relatif à la délimitation à la zone d'étude
+2. <font color='#134f5c'>Fichier vecteur relatif à la délimitation à la zone d'étude</font>
 
-<p><strong>Les variables</strong></p>
+<p><strong><font color='#16537e'>Les variables</font></strong></p>
 
-1. Le nom de la zone d'étude
+1. <font color='#134f5c'>Le nom de la zone d'étude</font>
 
 <p align="justify">Le nom donné à la zone d’étude est optionnel mais reste très important. En effet, c’est cette valeur qui vient <strong>nommer les fichiers créés</strong> et qui va permettre à l’utilisateur de bien différencier les données produites. De même, le nom donné à la zone d’étude est <strong>intégré aux métadonnées</strong>. Il est également important pour l’utilisateur de noter qu’il ne peut pas générer deux données au même endroit avec le même nom.</p>
 
-2. La valeur minimale 
+2. <font color='#134f5c'>La valeur minimale</font> 
 
 <p align="justify">Il s’agit de savoir <strong>à partir de quelle hauteur d’eau</strong> la génération doit s’effectuer. L’utilisateur peut soit choisir de récupérer le point le plus bas dans la parcelle…</p>
 <img src="assets/img/min.png" alt="valeur_minimale_generation_extension"/>
@@ -105,12 +105,12 @@ Pour installer le Plugin depuis GitHub :
 <img src="assets/img/min2.png" alt="valeur_minimale_generation_utilisateur"/>
 
 
-3. La valeur maximale à simuler pour l'étude
+3. <font color='#134f5c'>La valeur maximale à simuler pour l'étude</font>
 
 <p align="justify">Il s’agit de savoir <strong>jusqu’à quelle hauteur d’eau</strong> la génération doit s’effectuer. </p>
 <img src="assets/img/max.png" alt="valeur_maximale_generation_utilisateur"/>
 
-4. La résolution
+4. <font color='#134f5c'>La résolution</font>
 
 <table>
 <tr>
@@ -121,7 +121,7 @@ Pour installer le Plugin depuis GitHub :
 </table>
 
 
-5. Le pas de génération
+5. <font color='#134f5c'>Le pas de génération</font>
 
 <p align="justify">Il s’agit là de savoir quelle <strong>distance du niveau d’eau simulé dans la parcelle va séparer chaque donnée générée</strong>. Le pas par défaut est de 0,01 mètre, soit 1 centimètre, et permet donc de générer un raster tous les centimètres, afin d’avoir accès à une base de données large et précise pour pouvoir effectuer une comparaison avec les relevés effectués sur le terrain.</p>
 <img src="assets/img/pas.png" alt="valeur_pas_generation_utilisateur"/>
@@ -130,7 +130,7 @@ Pour installer le Plugin depuis GitHub :
 
 ### Analyse biodiversité
 
-<p align="justify">Métiers concernés : gestion de la biodiversité, ingénieur biodiversité, <p>
+<p align="justify"><font color='#16537e'>Métiers concernés :</font> gestion de la biodiversité, ingénieur biodiversité, <p>
 
 #### Données en entrée
 
@@ -141,7 +141,7 @@ Pour installer le Plugin depuis GitHub :
 
 ### Indicateurs et variables hydriques
 
-<p align="justify">Métiers concernés : gestion de l'eau,  <p>
+<p align="justify"><font color='#16537e'>Métiers concernés :</font> gestion de l'eau,  <p>
 
 #### Données en entrée
 
@@ -151,7 +151,7 @@ Pour installer le Plugin depuis GitHub :
 
 ### Aspect technique
 
-<p align="justify">Métiers concernés : administrateur SIG, technicien SIG, développeur, géomaticien, informaticien,  </p>
+<p align="justify"><font color='#16537e'>Métiers concernés :</font> administrateur SIG, technicien SIG, développeur, géomaticien, informaticien,  </p>
 
 #### Langages 
 
