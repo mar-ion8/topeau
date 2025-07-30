@@ -55,6 +55,23 @@ Pour installer le Plugin depuis GitHub :
 
 <p align="justify">Métiers concernés : gestion de l'eau, gestion de la biodiversité, <p>
 
+#### Données et variables en entrée
+
+<p><strong>Les données</strong></p>
+
+<p><strong>Les variables</strong></p>
+
+1. La valeur minimale 
+2. La valeur maximale à simuler pour l'étude
+3. La résolution
+
+<p float = left ><img src="assets/img/resol.png" alt="resolutions_donnees_raster"/></p>
+<p align="justify">Une dimension technique importante à prendre en compte lors de l’utilisation du Plugin est la <strong>résolution du raster généré</strong>, et surtout du raster en entrée. En effet, il n’est pas dérangeant de générer un raster avec une trop grosse résolution, mais générer un raster avec une résolution trop basse (donc plus basse que la donnée en entrée) renvoie une donnée inutilisable et impossible à visualiser, sans pour autant renvoyer de message d’erreur à l’utilisateur. Il est donc essentiel que l’utilisateur connaisse la résolution du raster qu’il donne en entrée au Plugin. Pour les référentiels altimétriques les plus couramment utilisés, la résolution est indiquée ci-contre. </p>
+
+4. Le pas de génération
+
+#### Données en sortie
+
 ### Analyse biodiversité
 
 <p align="justify">Métiers concernés : gestion de la biodiversité, ingénieur biodiversité, <p>
@@ -82,10 +99,17 @@ Pour installer le Plugin depuis GitHub :
 
 #### Langages 
 
+<p align="justify"> Le langage utilisé est majoritairement le Python. </p>
+
 #### Arborescence et fichiers de code 
 
 <p align="justify"> Les fichiers de code fonctionnent entre eux selon une logique d'appel : le fichier topeau.py (en rouge sur le schéma ci-dessous) per met de structurer l'extension et son interface graphique dans la barre d'outils de QGIS, en créant une liste déroulante d'interfaces numérotées. Chaque étape proposée correspond à un appel de fichier différent (en bleu sur le schéma ci-dessous). Chacun de ces fichiers est lié à un fichier .ui qui construit l'interface graphique de la fenêtre. Pour les étapes au sein desquelles les traitements sont simples et/ou limités, un fichier suffit. Par contre, certaines étapes de l'analyse (comme l'analyse raster) sont bien plus longues et font appel à un grand nombre de fonctions. En ce sens, certaines fonctions ont été regroupées dans des fichiers .py (en bleu sur le schéma ci-dessous) qui sont appelés au besoin par les autres fonctions. </p>
-<img src="assets/img/orga.png" alt="arbo_fichiers"/>
+<div>
+  <img
+    src="assets/img/orga.png"
+    alt="arbo_fichiers" />
+  <p>Figure x : schéma explicatif de l'organisation des fichiers .py entre eux</p>
+</div>
 
 #### Modules Python
 
@@ -104,7 +128,7 @@ Pour installer le Plugin depuis GitHub :
 ### Collaborateurs
 
 - <p align="justify"><strong>Julien Ancelin :</strong> encadrement technique, contrôle des modifications et des données produites, participation à l'écriture des fichiers de code</p>
-- <p align="justify"><strong>Romain Monjaret :</strong> aide apportée pour la gestion de certaines erreurs, séparation des fichiers de code, ressource en documentation/tutoriels Git, GitHub, Python</p>
+- <p align="justify"><strong>Romain Monjaret :</strong> aide apportée pour la gestion de certaines erreurs, aide apportée pour la séparation des fichiers de code, ressource en documentation/tutoriels Git, GitHub, Python</p>
 - <p align="justify"><strong>Olivier Schmit :</strong> contrôle des métadonnées</p>
 
 ### Sources 
