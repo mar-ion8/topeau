@@ -75,7 +75,7 @@ Pour installer le Plugin depuis GitHub :
 
 ### Structuration du Plugin
 
-<p align="justify">Le Plugin a été pensé selon une logique de séparation des étapes en interfaces. Ainsi, <p>
+<p align="justify">Le Plugin a été pensé selon une logique de séparation des étapes de l'analyse et des besoins des utilisateurs en interfaces. Ainsi, deux étapes sont nécessaires avant l'analyse et le calcul d'indicateurs : la création d'une base de données SQLite au format GPKG  <p>
 
 ## Utilisation
 
@@ -155,17 +155,13 @@ Pour installer le Plugin depuis GitHub :
 
 #### Langages 
 
-<p align="justify"> Le langage utilisé est majoritairement le Python. </p>
+<p align="justify"> Le langage utilisé est majoritairement le Python. C'est l'un des deux langages les plus utilisés par QGIS (avec C++) pour construire des traitements. Lorsqu'ils sont récupérés depuis QGIS, les algorithmes sont en Python. En ce sens, j'ai décidé de coder l'intégralité des chaînes de traitements en Python, et d'interagir avec PyQT5 pour faire correspondre les fonctions créées avec le fonctionnement de QGIS. Pour ce qui est des interfaces, celles-ci ont été créées en .ui sur QTDesigner, outil qui permet l'insertion de Widgets QGIS.   </p>
 
 #### Arborescence et fichiers de code 
 
-<p align="justify"> Les fichiers de code fonctionnent entre eux selon une logique d'appel : le fichier topeau.py (en rouge sur le schéma ci-dessous) per met de structurer l'extension et son interface graphique dans la barre d'outils de QGIS, en créant une liste déroulante d'interfaces numérotées. Chaque étape proposée correspond à un appel de fichier différent (en bleu sur le schéma ci-dessous). Chacun de ces fichiers est lié à un fichier .ui qui construit l'interface graphique de la fenêtre. Pour les étapes au sein desquelles les traitements sont simples et/ou limités, un fichier suffit. Par contre, certaines étapes de l'analyse (comme l'analyse raster) sont bien plus longues et font appel à un grand nombre de fonctions. En ce sens, certaines fonctions ont été regroupées dans des fichiers .py (en bleu sur le schéma ci-dessous) qui sont appelés au besoin par les autres fonctions. </p>
-<div>
-  <img
-    src="assets/img/orga.png"
-    alt="arbo_fichiers" />
-  <p>Figure x : schéma explicatif de l'organisation des fichiers .py entre eux</p>
-</div>
+<p align="justify"> Les fichiers de code fonctionnent entre eux selon une logique d'appel : le fichier topeau.py (en rouge sur le schéma ci-dessous) per met de structurer l'extension et son interface graphique dans la barre d'outils de QGIS, en créant une liste déroulante d'interfaces numérotées. Chaque étape proposée correspond à un appel de fichier différent (en bleu sur le schéma ci-dessous). Chacun de ces fichiers est lié à un fichier .ui qui construit l'interface graphique de la fenêtre. Pour les étapes au sein desquelles les traitements sont simples et/ou limités, un fichier suffit. Par contre, certaines étapes de l'analyse (comme l'analyse raster) sont bien plus longues et font appel à un grand nombre de fonctions. En ce sens, certaines fonctions ont été regroupées dans des fichiers .py (en vert sur le schéma ci-dessous) qui sont appelés au besoin par les autres fonctions. </p>
+<img src="assets/img/orga.png" alt="arbo_fichiers" />
+
 
 #### Modules Python
 
@@ -176,6 +172,9 @@ Pour installer le Plugin depuis GitHub :
 | datetime           | “Ce module met à disposition des fonctions pour manipuler des dates et des heures. [...] l’efficacité de l’import de ce module est due au formatage et à la manipulation des données résultats” (https://docs.python.org) |
 | numpy              | Ce module offre la possibilité de calculer les statistiques (déciles, médiane…) qui n’étaient pas calculées à partir des algorithmes natifs de QGIS |
 | rasterio           | Ce module offre un ensemble de fonctionnalités utiles à la lecture de données raster, voire à leur manipulation |
+| sqlite3            | Ce module permet la connexion à des bases de données SQLite et le requêtage sur leurs données en SQL |
+| pandas             | Ce module permet l'utilisation et la manipulation de données |
+| geopandas          | Ce module permet l'utilisation et la manipulation de données géospatiales |
 
 
 
