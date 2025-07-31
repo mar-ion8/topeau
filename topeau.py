@@ -40,6 +40,8 @@ from .about import *
 from .resources import *
 # Import the code for the dialog
 import os.path
+# import de la librairie de lecture d'un site web
+import webbrowser
 
 
 class TopEau:
@@ -102,10 +104,7 @@ class TopEau:
         # Bouton Calculs gestion eau
         self.actionCalculs = QAction("3.b Analyse fine : indicateur pour la gestion de l'eau", self.interface.mainWindow())
         self.actionCalculs.triggered.connect(self.openCalculs)
-        # Bouton Visualisation stats eau
-        #self.actionCalculs = QAction("Bonus : visualisation des statistiques", self.interface.mainWindow())
-        #self.actionCalculs.triggered.connect(self.openVisu)
-        # Bouton Notice
+        # Bouton Aide
         self.actionHelp = QAction("Aide", self.interface.mainWindow())
         self.actionHelp.triggered.connect(self.openHelp)
         # Bouton À propos
@@ -129,8 +128,7 @@ class TopEau:
     def openTraitement(self):
         traitement = TraitementWidget(self.interface)
         result = traitement.exec_()
-        # message permettant de contrôler la validité du code dans la console Python de QGIS
-        print('ok')
+        print('ok') # message permettant de contrôler la validité du code dans la console Python de QGIS
 
     # connexion au fichier imports.py relatif à l'import des données eau dans la table mesure dédiée
     def openImport(self):
@@ -144,35 +142,24 @@ class TopEau:
         result = biodiv.exec_()
         print("ok")
 
+    # connexion au fichier calcul.py relatif aux calculs des indicateurs en fonction de périodes, de mois ou de jours
     def openCalculs(self):
         calculs = CalculWidget(self.interface)
         result = calculs.exec_()
         print("ok")
 
-    """
-    def openVisu(self):
-        visu = VisuWidget(self.interface)
-        result = visu.exec_()
-        print("ok")
-    """
-
     def openHelp(self):
-        # accès au dossier « notice » et au fichier notice.pdf pour obtenir de l'aide avec l'utilisation plugin
-        localHelp = (os.path.dirname(__file__) + "/notice/notice_plugin.pdf")
-        localHelp = localHelp.replace("\\", "/")
-        QDesktopServices.openUrl(QUrl.fromLocalFile(localHelp))
-        # message permettant de contrôler la validité du code dans la console Python de QGIS
-        print('ok')
+        webbrowser.open('https://github.com/mar-ion8/topeau/blob/master/README.md') # accès à la docu du Plugin
+        print('ok') # message permettant de contrôler la validité du code dans la console Python de QGIS
 
+    # accès au fichier about.py pour avoir accès à la vue "à propos"
     def openAbout(self):
-        #accès au script about.py pour avoir accès à la vue "à propos"
         about = AboutWidget(self.interface)
         about.show()
         result = about.exec_()
-        #message permettant de contrôler la validité du code dans la console Python de QGIS
-        print('ok')
+        print('ok') #message permettant de contrôler la validité du code dans la console Python de QGIS
 
+    # removes the plugin menu item and icon from QGIS GUI
     def unload(self):
-        """Removes the plugin menu item and icon from QGIS GUI."""
         self.interface.mainWindow().menuBar().removeAction(self.menu.menuAction())
 
