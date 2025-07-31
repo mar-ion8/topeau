@@ -175,6 +175,7 @@ Pour installer le Plugin depuis GitHub :
 | sqlite3            | Ce module permet la connexion à des bases de données SQLite et le requêtage sur leurs données en SQL |
 | pandas             | Ce module permet l'utilisation et la manipulation de données |
 | geopandas          | Ce module permet l'utilisation et la manipulation de données géospatiales |
+| webbrowser         | Ce module permet l'insertion de liens hypertextes pour accèder à des sites web |
 
 
 
