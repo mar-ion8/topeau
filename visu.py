@@ -42,11 +42,12 @@ class VisuWindow(QDialog, params.form_graph):
         # connexion de la barre de progression
         self.progressBar.setValue(0)
 
-        # Bouton "Visualiser les déciles" - passer l'instance qui contient les déciles
+        # Bouton "Visualiser les déciles"
         self.visuDeciles.clicked.connect(self.creer_graphique_deciles)
-
-        # Bouton "Visualiser les déciles" - passer l'instance qui contient les déciles
+        # Bouton "Visualiser les surfaces"
         self.visuSurface.clicked.connect(self.creer_graphique_surface)
+        # Bouton "Visualiser la surface supérieure à 10cm"
+        self.visuSurface_2.clicked.connect(self.creer_graphique_sommesurface)
 
         # instauration de variables relatives à la création de l'interface graphiques
         layout = self.findChild(QVBoxLayout, 'layoutGraph')
@@ -83,7 +84,7 @@ class VisuWindow(QDialog, params.form_graph):
 
             fig, ax = plt.subplots(figsize=(5, 3))
             sns.barplot(data=df, x='Décile', y='Valeur', ax=ax)
-            ax.set_title('Distribution des déciles pour la zone d\'étude')
+            self.titre.setText('Distribution des déciles pour la zone d\'étude')
             ax.set_xlabel('Déciles')
             ax.set_ylabel('Valeur (m)')
 
@@ -138,7 +139,62 @@ class VisuWindow(QDialog, params.form_graph):
                     ax2.tick_params(axis='y')
 
                     # titre
-                    fig.suptitle('Répartition des surfaces pour la zone d\'étude')
+                    self.titre.setText('Répartition des surfaces pour la zone d\'étude')
+                    # ajustement de la mise en page
+                    fig.tight_layout()
+
+                    self.canvas.figure = fig
+                    self.canvas.draw()
+
+                    # connexion de la barre de progression
+                    self.progressBar.setValue(100)
+
+                    QgsMessageLog.logMessage("Graphique des surfaces créé avec succès", "Top'Eau", Qgis.Info)
+        else:
+            QgsMessageLog.logMessage("Aucune donnée récupérée depuis le GPKG disponible", "Top'Eau", Qgis.Warning)
+
+    def creer_graphique_sommesurface(self):
+
+        # récupération des attributs parents
+        if (self.parent_widget and
+                hasattr(self.parent_widget, 'sommesurf_hauteur') and
+                self.parent_widget.sommesurf_hauteur)  :
+
+            if (self.parent_widget and
+                    hasattr(self.parent_widget, 'niveaueau_hauteur') and
+                    self.parent_widget.niveaueau_hauteur) :
+
+                if (self.parent_widget and
+                        hasattr(self.parent_widget, 'surface_zoneetude') and
+                        self.parent_widget.surface_zoneetude):
+
+                    somme_surfaces = self.parent_widget.surface_hauteur
+                    niveau_eau = self.parent_widget.niveaueau_hauteur
+                    surfaceze = self.parent_widget.surface_zoneetude
+
+                    # création du graphique avec matplotlib
+                    df = pd.DataFrame({
+                        'Niveau d\'eau' : niveau_eau,
+                        'Surface': somme_surfaces,
+                        'Surface de la zone d\'étude' : surfaceze
+                    })
+
+                    fig, ax1 = plt.subplots(figsize=(4, 2))
+
+                    # attribution valeurs ordonnées gauche
+                    ax1.set_xlabel('Niveau d\'eau (m)')
+                    ax1.set_ylabel('Surface (m²)')
+                    sns.lineplot(data=df, x='Niveau d\'eau', y='Surface', ax=ax1)
+                    ax1.tick_params(axis='y')
+
+                    # attribution valuers ordonnées droite
+                    ax2 = ax1.twinx()
+                    ax2.set_ylabel('Surface de la zone d\'étude (m²)')
+                    sns.lineplot(data=df, x='Niveau d\'eau', y='Surface de la zone d\'étude', ax=ax2)
+                    ax2.tick_params(axis='y')
+
+                    # titre
+                    self.titre.setText('Répartition des surfaces pour la zone d\'étude')
                     # ajustement de la mise en page
                     fig.tight_layout()
 
