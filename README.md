@@ -56,26 +56,26 @@ Pour installer le Plugin depuis GitHub :
 
 ### Genèse du Plugin
 
-<p align="justify"> Dans le cadre de la Licence Professionnelle Topographie, Cartographie et Système d’Information Géographique (SIG), chaque étudiant est tenu, à l’issue des cours, de suivre un stage de 4 à 5 mois, afin de l’encourager à mettre en application au sein du milieu professionnel les connaissances et compétences acquises en cours, tout en lui permettant de bénéficier d’une insertion dans le monde professionnel. Pour mon stage, j’ai eu l’opportunité d’être encadrée par Mr <strong>Frédéric Pouget</strong> au sein de l’Université, et d’être accueillie par Mr <strong>Julien Ancelin</strong> au sein de l’Unité Expérimentale (UE) de Saint-Laurent-de-la-Prée (SLP), de l’Institut National de Recherche pour l’Agriculture, l’alimentation et l’Environnement (INRAE). Ce stage a été effectué dans le cadre des Volets de Recherche (VR) 1 et 2 du Projet MAVI, et s’est tenu du 14 avril 2025 au 22 août 2025. Le stage comportait trois grandes missions très techniques et utiles au sein de l’Unité et au sein du réseau d’UE créé autour des marais atlantiques. La première mission consistait à créer un MNT exploitable sur le site de Saint-Laurent-de-la-Prée et à comparer différentes sources de données altimétriques pour dresser un référentiel à l’échelle du Projet MAVI. La deuxième mission se concentrait autour de la création automatique d’un référentiel raster et attributaire lié à la simulation de niveaux d’eau dans chacune des parcelles des 5 sites. La troisième mission se tournait vers la création d’un outil permettant l’automatisation de calculs liés aux niveaux d’eau relevés dans les parcelles et fossés adjacents et aux dates de saisie. Puisque les deux et troisième missions se rejoignaient sur le principe de l’automatisation du processus, et de possibilité d’étendre à l’échelle de tous les sites du Projet MAVI, il a été décidé de créer un outil concentrant les deux processus.<p>
+<p align="justify"> Dans le cadre de la Licence Professionnelle Topographie, Cartographie et Système d’Information Géographique (SIG), chaque étudiant est tenu, à l’issue des cours, de suivre un stage de 4 à 5 mois, afin de l’encourager à mettre en application au sein du milieu professionnel les connaissances et compétences acquises en cours, tout en lui permettant de bénéficier d’une insertion dans le monde professionnel. Pour mon stage, j’ai eu l’opportunité d’être encadrée par Mr <strong>Frédéric Pouget</strong> au sein de l’Université, et d’être accueillie par Mr <strong>Julien Ancelin</strong> au sein de l’Unité Expérimentale (UE) de Saint-Laurent-de-la-Prée (SLP), de l’Institut National de Recherche pour l’Agriculture, l’alimentation et l’Environnement (INRAE). Ce stage a été effectué dans le cadre des Volets de Recherche (VR) 1 et 2 du Projet MAVI, et s’est tenu du 14 avril 2025 au 22 août 2025. Le stage comportait trois grandes missions très techniques et utiles au sein de l’Unité et au sein du réseau d’UE créé autour des marais atlantiques. La première mission consistait à créer un MNT exploitable sur le site de Saint-Laurent-de-la-Prée et à comparer différentes sources de données altimétriques pour dresser un référentiel à l’échelle du Projet MAVI. La deuxième mission se concentrait autour de la création automatique d’un référentiel raster et attributaire lié à la simulation de niveaux d’eau dans chacune des parcelles des 5 sites. La troisième mission se tournait vers la création d’un outil permettant l’automatisation de calculs liés aux niveaux d’eau relevés dans les parcelles et fossés adjacents et aux dates de saisie. Puisque les deux et troisième missions se rejoignaient sur le principe de l’automatisation du processus, et de possibilité d’étendre à l’échelle de tous les sites du Projet MAVI, il a été décidé de créer un outil concentrant les deux processus.</p>
 
-<p align="justify">Le premier effort de recherche concernant l’automatisation s’est porté vers la création d’un Modeleur graphique QGIS, mais passer par un Modeleur s’est avéré moins efficace que prévu. En ce sens, au fur et à mesure des discussions avec <strong>Julien Ancelin</strong> et <strong>Lilia Mzali</strong>, il a été décidé de mettre en place un Plugin QGIS, codé en Python, avec plusieurs interfaces dédiées à chacune des étapes de l’analyse des données eau relevées par les bouées, les piézomètres ou les agents sur le terrain. Ces étapes comprennent, comme il sera détaillé en allant dans la notice, la création d’un GeoPackage contenant des informations raster et attributaires propres à chaque simulation de niveau d’eau dans une zone d’étude, l’import des données eau dans ces GeoPackage et les analyses. Pour satisfaire un plus grand nombre d’utilisateurs et de demandes, deux interfaces d’analyse ont été réalisées : une propre à l’écoute biodiversité, et une propre à la création d’indicateurs dédiés à la gestion de l’eau. <p>
+<p align="justify">Le premier effort de recherche concernant l’automatisation s’est porté vers la création d’un Modeleur graphique QGIS, mais passer par un Modeleur s’est avéré moins efficace que prévu. En ce sens, au fur et à mesure des discussions avec <strong>Julien Ancelin</strong> et <strong>Lilia Mzali</strong>, il a été décidé de mettre en place un Plugin QGIS, codé en Python, avec plusieurs interfaces dédiées à chacune des étapes de l’analyse des données eau relevées par les bouées, les piézomètres ou les agents sur le terrain. Ces étapes comprennent, comme il sera détaillé en allant dans la notice, la création d’un GeoPackage contenant des informations raster et attributaires propres à chaque simulation de niveau d’eau dans une zone d’étude, l’import des données eau dans ces GeoPackage et les analyses. Pour satisfaire un plus grand nombre d’utilisateurs et de demandes, deux interfaces d’analyse ont été réalisées : une propre à l’écoute biodiversité, et une propre à la création d’indicateurs dédiés à la gestion de l’eau. </p>
 
-<p align="justify">Ces analyses ont été jugées comme nécessitant une forme d’automatisation car elles se doivent d’être répétées en fonction des espèces étudiées, des périodes de l’année, des différents types de relevés… et les calculs seraient longs et plus complexes sans ce Plugin et surtout sans la préparation des données proposée par le Plugin. Ces analyses sont effectuées dans le cadre du Projet MAVI mis en place par l’INRAE. Le Plugin a en ce sens vocation à pouvoir effectuer rapidement des traitements sur les différents sites expérimentaux du Projet MAVI, sans se préoccuper de la latence impliquée dans la distance entre les serveurs.<p>
+<p align="justify">Ces analyses ont été jugées comme nécessitant une forme d’automatisation car elles se doivent d’être répétées en fonction des espèces étudiées, des périodes de l’année, des différents types de relevés… et les calculs seraient longs et plus complexes sans ce Plugin et surtout sans la préparation des données proposée par le Plugin. Ces analyses sont effectuées dans le cadre du Projet MAVI mis en place par l’INRAE. Le Plugin a en ce sens vocation à pouvoir effectuer rapidement des traitements sur les différents sites expérimentaux du Projet MAVI, sans se préoccuper de la latence impliquée dans la distance entre les serveurs.</p>
 
-<p align="justify">La demande à l’origine du Plugin était celle-ci : “proposer un outil géographique capable de calculer les variables clefs sur l’inondation/assèchement des parcelles en fonction des données de hauteur d’eau acquises, de la topographie et des liens entre la parcelle et les canaux, et d’avoir une lecture visuelle. [...] proposer un outil capable de quantifier les volumes d’eau dans les canaux et sur les parcelles en fonction des hauteurs d’eau enregistrées.” (<i>Proposition de stage de Master 1 / Licence Pro - année 2024-2025</i>, soumise par <strong>Julien Ancelin</strong> auprès de <strong>Frédéric Pouget</strong>). Au fur et à mesure de la définition des besoins et objectifs, il a été convenu de répondre à ces demandes en créant un Plugin avec de multiples interfaces dédiées à la création d’une bibliothèque raster et attributaire permettant de visualiser l’inondation des parcelles et de connaître les surfaces et volumes d’inondation en fonction de classes, l’import de données terrain et l’analyse de données existantes. 
+<p align="justify">La demande à l’origine du Plugin était celle-ci : “proposer un outil géographique capable de calculer les variables clefs sur l’inondation/assèchement des parcelles en fonction des données de hauteur d’eau acquises, de la topographie et des liens entre la parcelle et les canaux, et d’avoir une lecture visuelle. [...] proposer un outil capable de quantifier les volumes d’eau dans les canaux et sur les parcelles en fonction des hauteurs d’eau enregistrées.” (<i>Proposition de stage de Master 1 / Licence Pro - année 2024-2025</i>, soumise par <strong>Julien Ancelin</strong> auprès de <strong>Frédéric Pouget</strong>). Au fur et à mesure de la définition des besoins et objectifs, il a été convenu de répondre à ces demandes en créant un Plugin avec de multiples interfaces dédiées à la création d’une bibliothèque raster et attributaire permettant de visualiser l’inondation des parcelles et de connaître les surfaces et volumes d’inondation en fonction de classes, l’import de données terrain et l’analyse de données existantes. </p>
 
-<p align="justify">La construction du Plugin s’est reposée sur de nombreuses discussions avec les membres de l’UE qui seraient les premiers utilisateurs (<strong>Lilia Mzali</strong>, <strong>Vincent Boutifard</strong> et <strong>Isis Binam</strong>), et <strong>Julien Ancelin</strong>, qui a encadré toute la partie technique et faisabilité de la solution. <p>
+<p align="justify">La construction du Plugin s’est reposée sur de nombreuses discussions avec les membres de l’UE qui seraient les premiers utilisateurs (<strong>Lilia Mzali</strong>, <strong>Vincent Boutifard</strong> et <strong>Isis Binam</strong>), et <strong>Julien Ancelin</strong>, qui a encadré toute la partie technique et faisabilité de la solution. </p>
 
 
 ### Quels utilisateurs?
 
-<p align="justify">Ce Plugin s’adresse premièrement aux membres de l’Unité Expérimentale de Saint-Laurent-de-la-Prée, qui ont été interrogés en tant que futurs utilisateurs pour définir les fonctionnalités du Plugin. Il s’agit même plus précisément de fonctionnalités jugées comme utiles, voire nécessaires à automatiser, dans le cadre des études réalisées au sein du Projet MAVI, sous la coordination de <strong>Lilia Mzali</strong> et <strong>Vincent Boutifard</strong>. <p>
+<p align="justify">Ce Plugin s’adresse premièrement aux membres de l’Unité Expérimentale de Saint-Laurent-de-la-Prée, qui ont été interrogés en tant que futurs utilisateurs pour définir les fonctionnalités du Plugin. Il s’agit même plus précisément de fonctionnalités jugées comme utiles, voire nécessaires à automatiser, dans le cadre des études réalisées au sein du Projet MAVI, sous la coordination de <strong>Lilia Mzali</strong> et <strong>Vincent Boutifard</strong>. </p>
 
-<p align="justify">Malgré tout, ce Plugin Open Source a été conçu pour être partagé à plus large échelle. L’utilisation de variables utilisateurs a été privilégiée sur la plupart des entrées afin de permettre à cette extension de devenir un outil utile au plus grand nombre dès qu’il s’agit de gestion des zones hydriques et d’analyser les relations entre la biodiversité et les niveaux d’eau. Évidemment, compte tenu de la précision des calculs effectués, l’extension reste bien plus adaptée à des milieux caractérisés par leur micro-topographie, comme les marais. <p>
+<p align="justify">Malgré tout, ce Plugin Open Source a été conçu pour être partagé à plus large échelle. L’utilisation de variables utilisateurs a été privilégiée sur la plupart des entrées afin de permettre à cette extension de devenir un outil utile au plus grand nombre dès qu’il s’agit de gestion des zones hydriques et d’analyser les relations entre la biodiversité et les niveaux d’eau. Évidemment, compte tenu de la précision des calculs effectués, l’extension reste bien plus adaptée à des milieux caractérisés par leur micro-topographie, comme les marais. </p>
 
 ### Structuration du Plugin
 
-<p align="justify">Le Plugin a été pensé selon une logique de séparation des étapes de l'analyse et des besoins des utilisateurs en interfaces. Ainsi, deux étapes sont nécessaires avant l'analyse et le calcul d'indicateurs : la création d'une base de données SQLite au format GPKG  <p>
+<p align="justify">Le Plugin a été pensé selon une logique de séparation des étapes de l'analyse et des besoins des utilisateurs en interfaces. Ainsi, deux étapes sont nécessaires avant l'analyse et le calcul d'indicateurs : la création d'une base de données SQLite au format GPKG  </p>
 
 ## Utilisation
 
@@ -128,9 +128,32 @@ Pour installer le Plugin depuis GitHub :
 
 #### Données en sortie
 
+<p align="justify"> La donnée produite par le Plugin est un GeoPackage qui sert de base de données gérée en SQL et qui stocke un ensemble de données de types et de formats différents. Il s'agit d'un ensemble de rasters, vecteurs et tables, créés et implémentés automatiquement. </p>
+
+<p align="justify"> Les données sont les suivantes :  </p>
+<table>
+<tr>
+<td width="30%"><img src="assets/img/resol.png" alt="resolutions_donnees_raster" width="250"/></td>
+<td width="70%"><p align="justify">
+- un raster par niveau d'eau généré (1)
+- une couche vecteur "zone_etude" contenant la géométrie et les attributs de la zone d’étude (2)
+- une couche vecteur "hauteur_eau" contenant l’emprise géométrique et les attributs de chaque niveau d’eau généré (3)
+- une table “mesure” vide pour l’accueil des données eau à importer ensuite (4)
+- deux tables de métadonnées édifiées selon les documents qualité d’Olivier Schmit (5)
+</p>
+<img src="assets/img/gpkg_vue.png" alt="couches_contenues_dans_le_GPKG"/></td>
+</tr>
+</table>
+
+
+
+#### Avertissement
+
+<p align="justify"> Il est vraiment important de noter qu'il s'agit là d'une estimation produite en fonction de la donnée altimétrique. Si celle-ci a des défaillances ou des erreurs de correspondance avec le terrain, l'algorithme ne saurait en être tenu responsable. De même, dans le cadre des marais, la donnée produite à partir du Plugin n'est pas en mesure de prendre en compte les connexions ou déconnexions entre les parcelles et les fossés. </p>
+
 ### Analyse biodiversité
 
-<p align="justify"><font color='#16537e'>Métiers concernés :</font> gestion de la biodiversité, ingénieur biodiversité, <p>
+<p align="justify"><font color='#16537e'>Métiers concernés :</font> gestion de la biodiversité, ingénieur biodiversité, </p>
 
 #### Données en entrée
 
@@ -141,7 +164,7 @@ Pour installer le Plugin depuis GitHub :
 
 ### Indicateurs et variables hydriques
 
-<p align="justify"><font color='#16537e'>Métiers concernés :</font> gestion de l'eau,  <p>
+<p align="justify"><font color='#16537e'>Métiers concernés :</font> gestion de l'eau,  </p>
 
 #### Données en entrée
 
@@ -155,7 +178,9 @@ Pour installer le Plugin depuis GitHub :
 
 #### Langages 
 
-<p align="justify"> Le langage utilisé est majoritairement le Python. C'est l'un des deux langages les plus utilisés par QGIS (avec C++) pour construire des traitements. Lorsqu'ils sont récupérés depuis QGIS, les algorithmes sont en Python. En ce sens, j'ai décidé de coder l'intégralité des chaînes de traitements en Python, et d'interagir avec PyQT5 pour faire correspondre les fonctions créées avec le fonctionnement de QGIS. Pour ce qui est des interfaces, celles-ci ont été créées en .ui sur QTDesigner, outil qui permet l'insertion de Widgets QGIS.   </p>
+<p align="justify"> Le langage utilisé est majoritairement le Python. C'est l'un des deux langages les plus utilisés par QGIS (avec C++) pour construire des traitements. Lorsqu'ils sont récupérés depuis QGIS, les algorithmes sont en Python. En ce sens, j'ai décidé de coder l'intégralité des chaînes de traitements en Python, et d'interagir avec PyQT5 pour faire correspondre les fonctions créées avec le fonctionnement de QGIS. Pour ce qui est des interfaces, celles-ci ont été créées en .ui sur QTDesigner, outil qui permet l'insertion de Widgets QGIS. Les styles sont quant à eux enregistrés en .qml. </p>
+
+<p align="justify"> Les fichiers .py sont ceux écrits en Python et donnant accès aux fonctions permettant les traitemetns effectués par le Plugin. Ces fichiers sont commentés le plus efficacement possible pour que ceux-ci soient repris et/ou modifiés au besoin par la suite. Malgré tout, les commentaires ont été agencés et réduits pour ne pas encombrer les fichiers et multiplier les lignes inutiles. </p>
 
 #### Arborescence et fichiers de code 
 
@@ -164,6 +189,8 @@ Pour installer le Plugin depuis GitHub :
 
 
 #### Modules Python
+
+<p align="justify"> Sur Python, les modules – ou “Packages” en anglais – sont des extensions natives ou à installer au sein de l’environnement qui contiennent des instructions Python donnant accès à un large panel de fonctions que le développeur n’aura pas à coder lui-même. </p>
 
 | Module             | Utilisation       |
 |--------------------|-------------------|
