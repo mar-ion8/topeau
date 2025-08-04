@@ -114,11 +114,13 @@ Pour installer le Plugin depuis GitHub :
 4. <font color='#134f5c'>La résolution</font>
 
 <table>
-<tr>
-<td width="30%"><img src="assets/img/resol2.png" alt="valeur_resol_utilisateur"/></td>
-<td width="70%"><p align="justify">Une dimension technique importante à prendre en compte lors de l'utilisation du Plugin est la <strong>résolution du raster généré</strong>, et surtout du raster en entrée. En effet, il n'est pas dérangeant de générer un raster avec une trop grosse résolution, mais générer un raster avec une résolution trop basse (donc plus basse que la donnée en entrée) renvoie une donnée inutilisable et impossible à visualiser, sans pour autant renvoyer de message d'erreur à l'utilisateur. Il est donc essentiel que l'utilisateur connaisse la résolution du raster qu'il donne en entrée au Plugin. Pour les référentiels altimétriques les plus couramment utilisés, la résolution est indiquée ci-contre.</p>
-
-</tr>
+	<tr>
+		<td width="30%"><img src="assets/img/resol.png" alt="resolutions_donnees_raster" width="250"/></td>
+		<td width="70%">
+			<p align="justify">Une dimension technique importante à prendre en compte lors de l'utilisation du Plugin est la <strong>résolution du raster généré</strong>, et surtout du raster en entrée. En effet, il n'est pas dérangeant de générer un raster avec une trop grosse résolution, mais générer un raster avec une résolution trop basse (donc plus basse que la donnée en entrée) renvoie une donnée inutilisable et impossible à visualiser, sans pour autant renvoyer de message d'erreur à l'utilisateur. Il est donc essentiel que l'utilisateur connaisse la résolution du raster qu'il donne en entrée au Plugin. Pour les référentiels altimétriques les plus couramment utilisés, la résolution est indiquée ci-contre.</p>
+			<img src="assets/img/resol2.png" alt="valeur_resol_utilisateur"/>
+		</td>
+	</tr>
 </table>
 
 
@@ -133,17 +135,18 @@ Pour installer le Plugin depuis GitHub :
 
 <p align="justify"> Les données sont les suivantes :  </p>
 <table>
-<tr>
-<td width="30%"><img src="assets/img/resol.png" alt="resolutions_donnees_raster" width="250"/></td>
-<td width="70%"><p align="justify">
-- un raster par niveau d'eau généré (1)
-- une couche vecteur "zone_etude" contenant la géométrie et les attributs de la zone d’étude (2)
-- une couche vecteur "hauteur_eau" contenant l’emprise géométrique et les attributs de chaque niveau d’eau généré (3)
-- une table “mesure” vide pour l’accueil des données eau à importer ensuite (4)
-- deux tables de métadonnées édifiées selon les documents qualité d’Olivier Schmit (5)
-</p>
-<img src="assets/img/gpkg_vue.png" alt="couches_contenues_dans_le_GPKG"/></td>
-</tr>
+	<tr>
+		<td width="30%"><img src="assets/img/gpkg_vue.png" alt="couches_contenues_dans_le_GPKG"/></td>
+		<td width="70%">
+			<p align="justify">
+			- un raster par niveau d'eau généré (1)
+			- une couche vecteur "zone_etude" contenant la géométrie et les attributs de la zone d’étude (2)
+			- une couche vecteur "hauteur_eau" contenant l’emprise géométrique et les attributs de chaque niveau d’eau généré (3)
+			- une table “mesure” vide pour l’accueil des données eau à importer ensuite (4)
+			- deux tables de métadonnées édifiées selon les documents qualité d’Olivier Schmit (5)
+			</p>
+		</td>
+	</tr>
 </table>
 
 
