@@ -139,11 +139,11 @@ Pour installer le Plugin depuis GitHub :
 		<td width="30%"><img src="assets/img/gpkg_vue.png" alt="couches_contenues_dans_le_GPKG"/></td>
 		<td width="70%">
 			<p align="justify">
-			- un raster par niveau d'eau généré (1)
-			- une couche vecteur "zone_etude" contenant la géométrie et les attributs de la zone d’étude (2)
-			- une couche vecteur "hauteur_eau" contenant l’emprise géométrique et les attributs de chaque niveau d’eau généré (3)
-			- une table “mesure” vide pour l’accueil des données eau à importer ensuite (4)
-			- deux tables de métadonnées édifiées selon les documents qualité d’Olivier Schmit (5)
+			<li> un raster par niveau d'eau généré (1) </li>
+			<li> une couche vecteur "zone_etude" contenant la géométrie et les attributs de la zone d’étude (2) </li>
+			<li> une couche vecteur "hauteur_eau" contenant l’emprise géométrique et les attributs de chaque niveau d’eau généré (3) </li>
+			<li> une table “mesure” vide pour l’accueil des données eau à importer ensuite (4) </li>
+			<li> deux tables de métadonnées édifiées selon les documents qualité d’Olivier Schmit (5) </li>
 			</p>
 		</td>
 	</tr>
