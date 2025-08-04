@@ -356,9 +356,6 @@
        </property>
       </widget>
      </item>
-     <item row="3" column="0">
-      <widget class="QLineEdit" name="nomChamp"/>
-     </item>
      <item row="2" column="0">
       <widget class="QLabel" name="label_15">
        <property name="font">
@@ -371,6 +368,9 @@
         <string>exemple : Time</string>
        </property>
       </widget>
+     </item>
+     <item row="3" column="0">
+      <widget class="QLineEdit" name="nomChamp_2"/>
      </item>
     </layout>
    </item>
@@ -385,9 +385,6 @@
      <property name="bottomMargin">
       <number>25</number>
      </property>
-     <item row="2" column="0">
-      <widget class="QLineEdit" name="nomChamp_2"/>
-     </item>
      <item row="1" column="0">
       <widget class="QLabel" name="label_12">
        <property name="font">
@@ -413,6 +410,9 @@
         <string>Nom du champ relatif au relevé eau : </string>
        </property>
       </widget>
+     </item>
+     <item row="2" column="0">
+      <widget class="QLineEdit" name="nomChamp"/>
      </item>
     </layout>
    </item>
