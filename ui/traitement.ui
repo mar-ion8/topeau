@@ -41,7 +41,7 @@
      <item row="0" column="0">
       <widget class="QDoubleSpinBox" name="inputMax">
        <property name="value">
-        <double>3.000000000000000</double>
+        <double>0.000000000000000</double>
        </property>
       </widget>
      </item>
@@ -167,7 +167,7 @@
      <item row="0" column="0">
       <widget class="QDoubleSpinBox" name="inputResol">
        <property name="value">
-        <double>0.250000000000000</double>
+        <double>0.500000000000000</double>
        </property>
       </widget>
      </item>
@@ -951,7 +951,7 @@
         </sizepolicy>
        </property>
        <property name="value">
-        <double>2.500000000000000</double>
+        <double>0.000000000000000</double>
        </property>
       </widget>
      </item>
@@ -1017,7 +1017,7 @@
         <cursorShape>PointingHandCursor</cursorShape>
        </property>
        <property name="text">
-        <string>Récupérer les valeurs Min, Max, Moyenne au sein de la zone d'étude</string>
+        <string>Récupérer les valeurs Min, Max, Moyenne au sein de la zone d'étude (OBLIGATOIRE)</string>
        </property>
        <property name="iconSize">
         <size>
