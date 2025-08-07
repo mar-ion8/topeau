@@ -28,182 +28,256 @@ class VisuWindow(QDialog, params.form_graph):
         # Stocker la référence au widget parent qui contient les déciles
         self.parent_widget = parent_widget
 
-        # création de l'interface de la fenêtre QGIS
-        self.setupUi(self)
-        # ajustement de la taille de la fenêtre pour qu'elle soit fixe
-        #self.setFixedSize(600, 400)
+        self.setupUi(self) # création de l'interface de la fenêtre QGIS
+        self.setWindowTitle("Top'Eau - Visualisation des statistiques liées aux données eau") # nom donné à la fenêtre
+        self.terminer.rejected.connect(self.reject) # bouton "OK / Annuler"
+        self.progressBar.setValue(0) # connexion de la barre de progression
 
-        # nom donné à la fenêtre
-        self.setWindowTitle("Top'Eau - Visualisation des statistiques liées aux données eau")
-
-        # Bouton "OK / Annuler"
-        self.terminer.rejected.connect(self.reject)
-
-        # connexion de la barre de progression
-        self.progressBar.setValue(0)
-
-        # Bouton "Visualiser les déciles"
+        # boutons de visualisation
         self.visuDeciles.clicked.connect(self.creer_graphique_deciles)
-        # Bouton "Visualiser les surfaces"
         self.visuSurface.clicked.connect(self.creer_graphique_surface)
-        # Bouton "Visualiser la surface supérieure à 10cm"
         self.visuSurface_2.clicked.connect(self.creer_graphique_sommesurface)
+        # bouton d'export
+        self.exportGraph.clicked.connect(self.export_current_graph)
 
-        # instauration de variables relatives à la création de l'interface graphiques
+        # instauration de variables relatives à la création de l'interface graphique
         layout = self.findChild(QVBoxLayout, 'layoutGraph')
         self.canvas = FigureCanvas(Figure())
         layout.addWidget(self.canvas)
 
-    def creer_graphique_deciles(self):
+        self.current_figure = None # variable pour stocker la figure courante
 
+    # fonction permettant la création du graphique des déciles
+    def creer_graphique_deciles(self):
         # récupération des attributs parents
         if (self.parent_widget and
                 hasattr(self.parent_widget, 'deciles_calcules') and
                 self.parent_widget.deciles_calcules):
-
             deciles_dict = self.parent_widget.deciles_calcules
 
-            # extraction des valeurs des déciles
-            valeurs_deciles = []
+            valeurs_deciles = [] # extraction des valeurs des déciles
             for i in range(10, 100, 10):
                 key = f'decile_{i}'
                 if key in deciles_dict:
                     valeurs_deciles.append(deciles_dict[key])
-
-                    # connexion de la barre de progression
-                    self.progressBar.setValue(50)
-
+                    self.progressBar.setValue(50) # maj de la barre de progression
                 else:
                     valeurs_deciles.append(0)
 
-            # création du graphique avec matplotlib
+            # création d'un dataframe avec pandas pour faciliter la création du graphique
             df = pd.DataFrame({
                 'Décile': [f'D{i}' for i in range(1, 10)],
                 'Valeur': valeurs_deciles
             })
 
-            fig, ax = plt.subplots(figsize=(5, 3))
-            sns.barplot(data=df, x='Décile', y='Valeur', ax=ax)
-            self.titre.setText('Distribution des déciles pour la zone d\'étude')
-            ax.set_xlabel('Déciles')
-            ax.set_ylabel('Valeur (m)')
+            self.canvas.figure.clear() # nettoyage de l'interface s'il y a déjà une figure
 
-            self.canvas.figure = fig
-            self.canvas.draw()
+            # création d'une nouvelle figure
+            fig = Figure(figsize=(6, 4))
+            ax = fig.add_subplot(111)
 
-            # connexion de la barre de progression
-            self.progressBar.setValue(100)
+            ax.bar(df['Décile'], df['Valeur']) # récupération des valerus stockées dans le dataframe
+            fig.suptitle('Distribution des déciles pour la zone d\'étude') # titre de la figure
+            ax.set_xlabel('Déciles') # association du df aux abscisses
+            ax.set_ylabel('Valeur (m)') # association du df aux ordonnées
+
+            if valeurs_deciles: # zoom sur le haut des barres pour plus de détail
+                min_val = min([v for v in valeurs_deciles if v > 0])
+                max_val = max(valeurs_deciles)
+                margin = (max_val - min_val) * 0.1  # 10% de marge
+                ax.set_ylim(min_val - margin, max_val + margin)
+
+            self.canvas.figure = fig # association du graph créé à l'interface de visualisation
+            self.canvas.draw() # affichage du graph sur l'interface
+            self.current_figure = fig  # stockage de la figure courante
+
+            self.progressBar.setValue(100) # maj de la barre de progression
 
             QgsMessageLog.logMessage("Graphique des déciles créé avec succès", "Top'Eau", Qgis.Info)
         else:
             QgsMessageLog.logMessage("Aucun décile calculé disponible", "Top'Eau", Qgis.Warning)
 
+    # fonction créant le graphique de visualisation de la surface de chaque niveau d'eau par rapport à la surf totale
     def creer_graphique_surface(self):
 
         # récupération des attributs parents
         if (self.parent_widget and
                 hasattr(self.parent_widget, 'surface_hauteur') and
-                self.parent_widget.surface_hauteur)  :
+                self.parent_widget.surface_hauteur and
+                hasattr(self.parent_widget, 'niveaueau_hauteur') and
+                self.parent_widget.niveaueau_hauteur and
+                hasattr(self.parent_widget, 'surface_zoneetude') and
+                self.parent_widget.surface_zoneetude):
 
-            if (self.parent_widget and
-                    hasattr(self.parent_widget, 'niveaueau_hauteur') and
-                    self.parent_widget.niveaueau_hauteur) :
+            surface = self.parent_widget.surface_hauteur
+            niveau_eau = self.parent_widget.niveaueau_hauteur
+            surfaceze = self.parent_widget.surface_zoneetude
 
-                if (self.parent_widget and
-                        hasattr(self.parent_widget, 'surface_zoneetude') and
-                        self.parent_widget.surface_zoneetude):
+            # vérif si surfaceze est une valeur unique ou une liste
+            if isinstance(surfaceze, (int, float)):
+                surface_totale = surfaceze
+            else:
+                surface_totale = surfaceze[0] if surfaceze else 1 # on prend la première valeur si c'est une liste
 
-                    surface = self.parent_widget.surface_hauteur
-                    niveau_eau = self.parent_widget.niveaueau_hauteur
-                    surfaceze = self.parent_widget.surface_zoneetude
+            self.canvas.figure.clear() # nettoyage de l'interface s'il y a déjà une figure
 
-                    # création du graphique avec matplotlib
-                    df = pd.DataFrame({
-                        'Niveau d\'eau' : niveau_eau,
-                        'Surface': surface,
-                        'Surface de la zone d\'étude' : surfaceze
-                    })
+            # création d'une nouvelle figure
+            fig = Figure(figsize=(6, 4))
+            ax1 = fig.add_subplot(111)
 
-                    fig, ax1 = plt.subplots(figsize=(4, 2))
+            # association des valeurs aux abscisses et aux ordonnées principales
+            ax1.plot(niveau_eau, surface, color='tab:blue', linewidth=2, marker='o', markersize=3)
+            ax1.set_xlabel('Niveau d\'eau (m)')
+            ax1.set_ylabel('Surface inondée (m²)', color='tab:blue')
+            ax1.tick_params(axis='y', labelcolor='tab:blue')
 
-                    # attribution valeurs ordonnées gauche
-                    ax1.set_xlabel('Niveau d\'eau (m)')
-                    ax1.set_ylabel('Surface (m²)')
-                    sns.lineplot(data=df, x='Niveau d\'eau', y='Surface', ax=ax1)
-                    ax1.tick_params(axis='y')
+            # association des valeurs à l'axe Y2 (droite) : échelle en pourcentage basée sur la surface totale de la ze
+            ax2 = ax1.twinx()
+            ax2.set_ylabel('Pourcentage de la surface totale (%)', color='tab:red')
+            # calcul les pourcentages réels pour chaque niveau d'eau
+            pourcentages_reels = [(s / surface_totale * 100) for s in surface]
+            # définition des limites de l'axe Y2 basées sur les pourcentages réels
+            pourcentage_min = min(pourcentages_reels)
+            pourcentage_max = max(pourcentages_reels)
 
-                    # attribution valuers ordonnées droite
-                    ax2 = ax1.twinx()
-                    ax2.set_ylabel('Surface de la zone d\'étude (m²)')
-                    sns.lineplot(data=df, x='Niveau d\'eau', y='Surface de la zone d\'étude', ax=ax2)
-                    ax2.tick_params(axis='y')
+            # ajout d'une marge de 5% pour garder une certaine lisibilité
+            marge = (pourcentage_max - pourcentage_min) * 0.05
+            ax2.set_ylim(max(0, pourcentage_min - marge), min(100, pourcentage_max + marge))
+            # graduation pour les pourcentages
+            if pourcentage_max <= 25:
+                ticks = [0, 5, 10, 15, 20, 25]
+            elif pourcentage_max <= 50:
+                ticks = [0, 10, 20, 30, 40, 50]
+            elif pourcentage_max <= 75:
+                ticks = [0, 25, 50, 75]
+            else:
+                ticks = [0, 25, 50, 75, 100]
+            # filtre sur les graduations pour ne garder que celles dans la plage visible
+            ticks_visibles = [t for t in ticks if ax2.get_ylim()[0] <= t <= ax2.get_ylim()[1]]
+            ax2.set_yticks(ticks_visibles)
+            ax2.tick_params(axis='y', labelcolor='tab:red')
 
-                    # titre
-                    self.titre.setText('Répartition des surfaces pour la zone d\'étude')
-                    # ajustement de la mise en page
-                    fig.tight_layout()
+            fig.suptitle('Surface inondée par niveau d\'eau') # ajout d'un titre au graphique
+            fig.tight_layout()
 
-                    self.canvas.figure = fig
-                    self.canvas.draw()
+            self.canvas.figure = fig
+            self.canvas.draw()
+            self.current_figure = fig
 
-                    # connexion de la barre de progression
-                    self.progressBar.setValue(100)
+            self.progressBar.setValue(100)
 
-                    QgsMessageLog.logMessage("Graphique des surfaces créé avec succès", "Top'Eau", Qgis.Info)
+            QgsMessageLog.logMessage("Graphique des surfaces créé avec succès", "Top'Eau", Qgis.Info)
         else:
             QgsMessageLog.logMessage("Aucune donnée récupérée depuis le GPKG disponible", "Top'Eau", Qgis.Warning)
 
+    # fonction créant le graphique de visualisation de la somme des surfaces sup à 10cm de chaque niveau d'eau/à la surf totale
     def creer_graphique_sommesurface(self):
 
         # récupération des attributs parents
         if (self.parent_widget and
                 hasattr(self.parent_widget, 'sommesurf_hauteur') and
-                self.parent_widget.sommesurf_hauteur)  :
+                self.parent_widget.sommesurf_hauteur and
+                hasattr(self.parent_widget, 'niveaueau_hauteur') and
+                self.parent_widget.niveaueau_hauteur and
+                hasattr(self.parent_widget, 'surface_zoneetude') and
+                self.parent_widget.surface_zoneetude):
 
-            if (self.parent_widget and
-                    hasattr(self.parent_widget, 'niveaueau_hauteur') and
-                    self.parent_widget.niveaueau_hauteur) :
+            somme_surfaces = self.parent_widget.sommesurf_hauteur
+            niveau_eau = self.parent_widget.niveaueau_hauteur
+            surfaceze = self.parent_widget.surface_zoneetude
 
-                if (self.parent_widget and
-                        hasattr(self.parent_widget, 'surface_zoneetude') and
-                        self.parent_widget.surface_zoneetude):
+            # vérif si surfaceze est une valeur unique ou une liste
+            if isinstance(surfaceze, (int, float)):
+                surface_totale = surfaceze
+            else:
+                surface_totale = surfaceze[0] if surfaceze else 1
 
-                    somme_surfaces = self.parent_widget.surface_hauteur
-                    niveau_eau = self.parent_widget.niveaueau_hauteur
-                    surfaceze = self.parent_widget.surface_zoneetude
+            self.canvas.figure.clear() # nettoyage de l'interface s'il y a déjà un graphique
 
-                    # création du graphique avec matplotlib
-                    df = pd.DataFrame({
-                        'Niveau d\'eau' : niveau_eau,
-                        'Surface': somme_surfaces,
-                        'Surface de la zone d\'étude' : surfaceze
-                    })
+            # création d'une nouvelle figure
+            fig = Figure(figsize=(6, 4))
+            ax1 = fig.add_subplot(111)
 
-                    fig, ax1 = plt.subplots(figsize=(4, 2))
+            # association des valeurs aux abscisses et aux ordonnées principales
+            ax1.plot(niveau_eau, somme_surfaces, color='tab:blue', linewidth=2, marker='o', markersize=3)
+            ax1.set_xlabel('Niveau d\'eau (m)')
+            ax1.set_ylabel('Surface > 10cm (m²)', color='tab:blue')
+            ax1.tick_params(axis='y', labelcolor='tab:blue')
 
-                    # attribution valeurs ordonnées gauche
-                    ax1.set_xlabel('Niveau d\'eau (m)')
-                    ax1.set_ylabel('Surface (m²)')
-                    sns.lineplot(data=df, x='Niveau d\'eau', y='Surface', ax=ax1)
-                    ax1.tick_params(axis='y')
+            # association des valeurs à l'axe Y2 (droite) : échelle en pourcentage basée sur la surface totale de la ze
+            ax2 = ax1.twinx()
+            ax2.set_ylabel('Pourcentage de la surface totale (%)', color='tab:red')
+            # calcul des pourcentages réels pour chaque point
+            pourcentages_reels = [(s / surface_totale * 100) for s in somme_surfaces]
+            # définition des limites de l'axe Y2 basées sur les pourcentages réels
+            pourcentage_min = min(pourcentages_reels)
+            pourcentage_max = max(pourcentages_reels)
+            # ajout d'une marge de 5% pour garder une certaine lisibilité
+            marge = (pourcentage_max - pourcentage_min) * 0.05
+            ax2.set_ylim(max(0, pourcentage_min - marge), min(100, pourcentage_max + marge))
 
-                    # attribution valuers ordonnées droite
-                    ax2 = ax1.twinx()
-                    ax2.set_ylabel('Surface de la zone d\'étude (m²)')
-                    sns.lineplot(data=df, x='Niveau d\'eau', y='Surface de la zone d\'étude', ax=ax2)
-                    ax2.tick_params(axis='y')
+            # graduations pour les pourcentages
+            if pourcentage_max <= 25:
+                ticks = [0, 5, 10, 15, 20, 25]
+            elif pourcentage_max <= 50:
+                ticks = [0, 10, 20, 30, 40, 50]
+            elif pourcentage_max <= 75:
+                ticks = [0, 25, 50, 75]
+            else:
+                ticks = [0, 25, 50, 75, 100]
 
-                    # titre
-                    self.titre.setText('Répartition des surfaces pour la zone d\'étude')
-                    # ajustement de la mise en page
-                    fig.tight_layout()
+            # filtre sur les graduations pour ne garder que ceux dans la plage visible
+            ticks_visibles = [t for t in ticks if ax2.get_ylim()[0] <= t <= ax2.get_ylim()[1]]
+            ax2.set_yticks(ticks_visibles)
+            ax2.tick_params(axis='y', labelcolor='tab:red')
 
-                    self.canvas.figure = fig
-                    self.canvas.draw()
+            fig.suptitle('Surface > 10cm par niveau d\'eau') # ajout d'un titre
+            fig.tight_layout()
 
-                    # connexion de la barre de progression
-                    self.progressBar.setValue(100)
+            self.canvas.figure = fig
+            self.canvas.draw()
+            self.current_figure = fig
 
-                    QgsMessageLog.logMessage("Graphique des surfaces créé avec succès", "Top'Eau", Qgis.Info)
+            self.progressBar.setValue(100)
+
+            QgsMessageLog.logMessage("Graphique des surfaces > 10cm créé avec succès", "Top'Eau", Qgis.Info)
         else:
             QgsMessageLog.logMessage("Aucune donnée récupérée depuis le GPKG disponible", "Top'Eau", Qgis.Warning)
+
+    # fonction gérant l'export des graphiques
+    def export_current_graph(self):
+
+        if self.current_figure is None: # vérification de la validité du graphique
+            QMessageBox.warning(self, "Attention", "Aucun graphique à exporter. Veuillez d'abord créer un graphique.")
+            return
+
+        try:
+            output_path, selected_filter = QFileDialog.getSaveFileName(
+                self,
+                "Exporter le graphique",
+                "",
+                "PNG files (*.png);;PDF files (*.pdf);;SVG files (*.svg)"
+            ) # ouverture de l'explorateur de fichier pour choisir le fichier de sortie avec différents formats
+
+            if output_path: # détermine le format selon l'extension ou le filtre
+
+                if not any(output_path.lower().endswith(ext) for ext in ['.png', '.pdf', '.svg']):
+                    # ajout l'extension selon le filtre sélectionné
+                    if "PNG" in selected_filter:
+                        output_path += ".png"
+                    elif "PDF" in selected_filter:
+                        output_path += ".pdf"
+                    elif "SVG" in selected_filter:
+                        output_path += ".svg"
+                # export de la figure courante
+                dpi = 300 if output_path.lower().endswith('.png') else None
+                self.current_figure.savefig(output_path, dpi=dpi, bbox_inches='tight',
+                                            facecolor='white', edgecolor='none')
+
+                QMessageBox.information(self, "Export réussi", f"Graphique exporté vers :\n{output_path}")
+
+                QgsMessageLog.logMessage(f"Graphique exporté avec succès : {output_path}", "Top'Eau", Qgis.Info)
+
+        except Exception as e:
+            QgsMessageLog.logMessage(f"Erreur lors de l'export : {str(e)}", "Top'Eau", Qgis.Critical)
+            QMessageBox.critical(self, "Erreur lors de l'export", f"Impossible d'exporter le graphique :\n{str(e)}")
