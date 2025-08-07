@@ -6,15 +6,15 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>526</width>
-    <height>646</height>
+    <width>626</width>
+    <height>691</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Dialog</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="12" column="6">
+   <item row="12" column="3">
     <widget class="QDialogButtonBox" name="terminer">
      <property name="font">
       <font>
@@ -29,7 +29,7 @@
      </property>
     </widget>
    </item>
-   <item row="4" column="1" colspan="6">
+   <item row="4" column="1" colspan="3">
     <layout class="QVBoxLayout" name="verticalLayout">
      <property name="spacing">
       <number>6</number>
@@ -38,7 +38,7 @@
       <number>0</number>
      </property>
      <property name="bottomMargin">
-      <number>69</number>
+      <number>0</number>
      </property>
      <item>
       <widget class="QLabel" name="label">
@@ -150,38 +150,37 @@
        </property>
       </widget>
      </item>
-    </layout>
-   </item>
-   <item row="8" column="1" colspan="6">
-    <layout class="QVBoxLayout" name="verticalLayout_2">
      <item>
-      <widget class="QLabel" name="titre">
-       <property name="font">
-        <font>
-         <family>Tw Cen MT</family>
-        </font>
+      <spacer name="verticalSpacer_2">
+       <property name="orientation">
+        <enum>Qt::Vertical</enum>
        </property>
-       <property name="text">
-        <string/>
+       <property name="sizeType">
+        <enum>QSizePolicy::Maximum</enum>
        </property>
-       <property name="alignment">
-        <set>Qt::AlignCenter</set>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>20</width>
+         <height>20</height>
+        </size>
        </property>
-      </widget>
+      </spacer>
      </item>
     </layout>
    </item>
-   <item row="5" column="1" rowspan="3" colspan="6">
-    <layout class="QVBoxLayout" name="layoutGraph">
-     <property name="spacing">
-      <number>0</number>
+   <item row="12" column="1">
+    <widget class="QProgressBar" name="progressBar">
+     <property name="font">
+      <font>
+       <family>Tw Cen MT</family>
+      </font>
      </property>
-     <property name="topMargin">
-      <number>0</number>
+     <property name="value">
+      <number>24</number>
      </property>
-    </layout>
+    </widget>
    </item>
-   <item row="9" column="1" colspan="3">
+   <item row="8" column="1" colspan="2">
     <layout class="QVBoxLayout" name="verticalLayout_3">
      <property name="spacing">
       <number>8</number>
@@ -207,7 +206,7 @@
      </item>
     </layout>
    </item>
-   <item row="9" column="6">
+   <item row="8" column="3">
     <layout class="QGridLayout" name="gridLayout_2">
      <item row="0" column="1">
       <widget class="QPushButton" name="visuDeciles">
@@ -219,19 +218,6 @@
        </property>
        <property name="text">
         <string>les déciles</string>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="2">
-      <widget class="QPushButton" name="visuSurface">
-       <property name="font">
-        <font>
-         <family>Tw Cen MT</family>
-         <pointsize>11</pointsize>
-        </font>
-       </property>
-       <property name="text">
-        <string>les surfaces</string>
        </property>
       </widget>
      </item>
@@ -248,19 +234,79 @@
        </property>
       </widget>
      </item>
+     <item row="0" column="2">
+      <widget class="QPushButton" name="visuSurface">
+       <property name="font">
+        <font>
+         <family>Tw Cen MT</family>
+         <pointsize>11</pointsize>
+        </font>
+       </property>
+       <property name="text">
+        <string>les surfaces</string>
+       </property>
+      </widget>
+     </item>
     </layout>
    </item>
-   <item row="12" column="1">
-    <widget class="QProgressBar" name="progressBar">
-     <property name="font">
-      <font>
-       <family>Tw Cen MT</family>
-      </font>
+   <item row="5" column="1" rowspan="3" colspan="3">
+    <layout class="QVBoxLayout" name="layoutGraph">
+     <property name="spacing">
+      <number>0</number>
      </property>
-     <property name="value">
-      <number>24</number>
+     <property name="topMargin">
+      <number>0</number>
      </property>
-    </widget>
+    </layout>
+   </item>
+   <item row="10" column="1" rowspan="2" colspan="3">
+    <layout class="QGridLayout" name="gridLayout_4">
+     <item row="0" column="0">
+      <spacer name="verticalSpacer_3">
+       <property name="orientation">
+        <enum>Qt::Vertical</enum>
+       </property>
+       <property name="sizeType">
+        <enum>QSizePolicy::Maximum</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>20</width>
+         <height>10</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item row="1" column="0">
+      <widget class="QPushButton" name="exportGraph">
+       <property name="font">
+        <font>
+         <family>Tw Cen MT</family>
+         <pointsize>10</pointsize>
+        </font>
+       </property>
+       <property name="text">
+        <string>Exporter</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="0">
+      <spacer name="verticalSpacer_4">
+       <property name="orientation">
+        <enum>Qt::Vertical</enum>
+       </property>
+       <property name="sizeType">
+        <enum>QSizePolicy::Maximum</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>20</width>
+         <height>10</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+    </layout>
    </item>
   </layout>
  </widget>
