@@ -1,7 +1,4 @@
-# -*- coding: utf-8 -*-
-
 # fichier contenant les fonctions liées à la boucle de génération des rasters
-
 # Import module PyQt et API PyQGIS
 from qgis import core, gui
 from PyQt5.QtCore import *
@@ -13,13 +10,8 @@ from qgis.core import Qgis, QgsMessageLog
 from qgis import processing
 from qgis.core import QgsRasterLayer
 import os
-# import des librairies nécessaires à la lecture de données géospatiales
-import json
-# import librairie nécessaire à certains calculs
-import math
-import statistics
-# import librairie manipulation raster et gpkg
-import rasterio
+import json # import des librairies nécessaires à la lecture de données géospatiales
+import rasterio # import librairie manipulation raster
 from rasterio.transform import from_origin
 import numpy as np
 import subprocess
@@ -41,8 +33,7 @@ def decouper_raster(selected_raster, selected_vecteur):
         'INPUT': selected_raster,  # variable récupérant le raster sélectionné par l'utilisateur
         'MASK': selected_vecteur,  # variable récupérant le vecteur sélectionné par l'utilisateur
         'SOURCE_CRS': None,
-        'TARGET_CRS': QgsCoordinateReferenceSystem('EPSG:2154'),
-        # permet de s'assurer que le raster découpé sera bien en 2154
+        'TARGET_CRS': QgsCoordinateReferenceSystem('EPSG:2154'), # permet de s'assurer que le raster découpé sera bien en 2154
         'TARGET_EXTENT': None,
         'NODATA': -9999,  # permet aux pixels à valeur nulle de ne pas être comptés dans l'emprise du raster
         'ALPHA_BAND': False,
@@ -105,35 +96,6 @@ def resample_raster(input_path, output_name, resolution):
         QgsMessageLog.logMessage(f"La couche à rééchantillonner n'est pas valide: {input_path}", "Top'Eau",
                                  Qgis.Warning)
         return None
-
-    '''
-    # A VOIR SI SUPPRESSION
-
-    # ajustement : ajout découpage pour éviter la création d'un contour rectangulaire aberrant lors de la création du raster
-    path_reclip = os.path.join(params.temp_path, f"{output_name}_reclip.tif")
-    selected_vecteur = getattr(self, 'selected_vecteur_path', None)
-
-    processing.run("gdal:cliprasterbymasklayer", {
-        'INPUT': layer_reclass,
-        'MASK': selected_vecteur,
-        'SOURCE_CRS': QgsCoordinateReferenceSystem('EPSG:2154'),
-        'TARGET_CRS': QgsCoordinateReferenceSystem('EPSG:2154'),
-        'TARGET_EXTENT': None,
-        'NODATA': -9999,
-        'ALPHA_BAND': False,
-        'CROP_TO_CUTLINE': True,
-        'KEEP_RESOLUTION': False,
-        'SET_RESOLUTION': False,
-        'X_RESOLUTION': None,
-        'Y_RESOLUTION': None,
-        'MULTITHREADING': False,
-        'OPTIONS': None,
-        'DATA_TYPE': 0,
-        'EXTRA': '',
-        'OUTPUT': path_reclip})
-
-    # NB : changer l'input de r.resamp.stats en "path_reclip" si conservation
-    '''
 
     path_resamp = os.path.join(params.temp_path, f"{output_name}_resamp.tif")  # fichier final du raster rééchantillonné
     # utilisation de l'algorithme GRASS "r.resamp.Stats" pour le ré-échantillonnage
@@ -205,7 +167,7 @@ def calculer_stats_raster(path_resamp):
         else:
             mask = (~np.isnan(data)) & (data != 0)
 
-        # calcul de la surface en fonction de classes prédéfinies
+        # calcul de la surface en fonction de classes prédéfinies par Lilia Mzali
         pixels_cl1 = np.count_nonzero((data > 0) & (data <= 0.05))
         classe_1_surf = pixels_cl1 * surface_pixel
 
@@ -231,7 +193,8 @@ def calculer_stats_raster(path_resamp):
         surface_totale = pixels_valides * surface_pixel
         volume_total = np.sum(data[mask]) * surface_pixel
 
-        return surface_totale, pixels_valides, volume_total, classe_1_surf, classe_2_surf, classe_3_surf, classe_4_surf, classe_5_surf, classe_6_surf, classe_7_surf
+        return (surface_totale, pixels_valides, volume_total, classe_1_surf, classe_2_surf, classe_3_surf, classe_4_surf,
+                classe_5_surf, classe_6_surf, classe_7_surf)
 
     except Exception as e:
         QgsMessageLog.logMessage(f"Erreur calcul surface raster: {str(e)}", "Top'Eau", Qgis.Critical)
@@ -416,8 +379,7 @@ def ajouter_raster_au_gpkg(path_resamp, gpkg_path, table_name):
             QgsMessageLog.logMessage(f"GPKG inexistant: {gpkg_path}", Qgis.Warning)
             return False
 
-        # utilisation de l'API GDAL pour la conversion
-        try:
+        try: # utilisation de l'API GDAL pour la conversion
             src_ds = gdal.Open(path_resamp)  # ouverture du raster source avec GDAL
             if src_ds is None:
                 QMessageBox.warning(self, "Erreur", f"Impossible d'ouvrir le fichier source: {path_resamp}")
