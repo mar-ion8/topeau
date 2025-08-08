@@ -9,7 +9,6 @@ from qgis.core import Qgis, QgsMessageLog
 from qgis import processing
 from qgis.core import QgsRasterLayer
 import os
-
 # import librairies nécessaires à la datavisualisation
 import seaborn as sns
 import pandas as pd
