@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 # Import module PyQt et API PyQGIS
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
@@ -10,71 +9,49 @@ from qgis.core import Qgis, QgsMessageLog
 from qgis.utils import iface
 from qgis import processing
 import os
+import sqlite3 # import librairie nécessaire au requêtage SQL
 
-#import librairie nécessaire au requêtage SQL
-import sqlite3
-
-# lien entre traitement.py et traitement.ui
+# lien entre calcul.py et calcul.ui
 ui_path = os.path.dirname(os.path.abspath(__file__))
 ui_path = os.path.join(ui_path, "ui")
 form_traitement, _ = uic.loadUiType(os.path.join(ui_path, "calcul.ui"))
 
-
-# mise en place de la classe CalculWidget
-# va regrouper l'ensemble des fonctions relatives aux traitements à réaliser
+# mise en place de la classe CalculWidget qui va regrouper l'ensemble des fonctions relatives aux traitements à réaliser
 class CalculWidget(QDialog, form_traitement):
     def __init__(self, iface):
         QDialog.__init__(self)
 
-        # création de l'interface de la fenêtre QGIS
-        self.setupUi(self)
-        # ajustement de la taille de la fenêtre pour qu'elle soit fixe
-        #self.setFixedSize(600, 400)
-        # nom donné à la fenêtre
-        self.setWindowTitle("Top'Eau - Analyse des données eau : écoute biodiversité")
-
-        # Bouton "OK / Annuler"
-        self.terminer.rejected.connect(self.reject)
-
-        # Bouton "Calculer mes données journalières"
-        self.calcJour.clicked.connect(self.calculs_journaliers)
-
-        # Bouton "Calculer mes données mensuelles"
-        self.calcMois.clicked.connect(self.calculs_mensuels)
-
-        # Bouton "Calculer mes données périodiques"
-        self.calcPeriode.clicked.connect(self.calculs_periodiques)
-
-        # connexion de la barre de progression
-        self.progressBar.setValue(0)
+        self.setupUi(self) # création de l'interface de la fenêtre QGIS
+        self.setWindowTitle("Top'Eau - Analyse des données eau : écoute biodiversité") # nom donné à la fenêtre
+        self.terminer.rejected.connect(self.reject) # Bouton "OK / Annuler"
+        self.calcJour.clicked.connect(self.calculs_journaliers) # Bouton "Calculer mes données journalières"
+        self.calcMois.clicked.connect(self.calculs_mensuels)  # Bouton "Calculer mes données mensuelles"
+        self.calcPeriode.clicked.connect(self.calculs_periodiques)  # Bouton "Calculer mes données périodiques"
+        self.progressBar.setValue(0)  # connexion de la barre de progression
 
     def reject(self):
         QDialog.reject(self)
         return
 
-    # fonction permettant de créer une table récupérant/calculant des valeurs journalières selon les données insérées en 2.
+    # fonction permettant de créer une table récupérant/calculant des valeurs journalières
     def calculs_journaliers(self):
 
-        # récupération du GPKG sélectionné par l'utilisateur
-        selected_GPKG = self.inputGPKG.filePath()
+        selected_GPKG = self.inputGPKG.filePath() # récupération du GPKG sélectionné par l'utilisateur
         if not selected_GPKG or not os.path.exists(selected_GPKG):
             QMessageBox.warning(self, "Erreur", "Veuillez sélectionner un fichier GPKG valide.")
             return None
 
-        # 1. connexion SQLite au GPKG
+        # connexion SQLite au GPKG
         conn = sqlite3.connect(selected_GPKG)
         cursor = conn.cursor()
 
-
-        # 2.1. suppression de la table donnees_journalieres si elle existe
-        try:
+        try: # suppression de la table donnees_journalieres si elle existe
             cursor.execute("DROP TABLE IF EXISTS donnees_journalieres")
             QgsMessageLog.logMessage("Table donnees_journalieres supprimée si elle existait", "Top'Eau", Qgis.Info)
         except Exception as e:
             QgsMessageLog.logMessage(f"Erreur lors de la suppression de la table : {e}", "Top'Eau", Qgis.Warning)
 
-        # 2.2. création de la nouvelle table "donnees_journalieres"
-        try :
+        try : # création de la nouvelle table "donnees_journalieres"
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS donnees_journalieres(
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -94,16 +71,14 @@ class CalculWidget(QDialog, form_traitement):
             QgsMessageLog.logMessage(f"Erreur lors de la création de la table : {e}", "Top'Eau", Qgis.Warning)
 
 
-        # 3. récupération des données dans les tables créées et implémentées en amont
+        # récupération des données dans les tables créées et implémentées en amont
 
-        # 3.1. récupération du premier décile depuis la table zone_etude
         point_bas = None
-        try:
+        try: # récupération du premier décile depuis la table zone_etude
             cursor.execute('''SELECT decile_10 FROM zone_etude''')
             point_bas_result = cursor.fetchone()
             if point_bas_result:
                 point_bas = point_bas_result[0]
-                #print(f"point_bas extrait: {point_bas} (type: {type(point_bas)})")
             else:
                 QgsMessageLog.logMessage(f"'point_bas' ne retourne aucune valeur", "Top'Eau", Qgis.Warning)
 
@@ -113,9 +88,8 @@ class CalculWidget(QDialog, form_traitement):
             QgsMessageLog.logMessage(f"Erreur lors de la requête sur la table zone_etude: {e}", "Top'Eau",
                                          Qgis.Warning)
 
-        # 3.2. récupération de la surface totale depuis la table zone_etude pour calculer les pourcentages
         surface_ze = None
-        try:
+        try: # récupération de la surface totale depuis la table zone_etude pour calculer les pourcentages
             cursor.execute('''SELECT surface_m2 FROM zone_etude''')
             surface_ze_result = cursor.fetchone()
             if surface_ze_result:
@@ -123,14 +97,11 @@ class CalculWidget(QDialog, form_traitement):
             else:
                 QgsMessageLog.logMessage(f"'surface_m2' ne retourne aucune valeur", "Top'Eau",
                                              Qgis.Warning)
-
         except Exception as e:
             QgsMessageLog.logMessage(f"Erreur lors de la requête surface sur la table zone_etude: {e}", "Top'Eau",
                                          Qgis.Warning)
 
-        # 3.3. requête effectuant la jointure entre mesure & hauteur_eau pour récupérer les dates, niveaux d'eau et surfaces
-        try:
-            # jointure basée sur le niveau d'eau
+        try: # jointure entre mesure & hauteur_eau pour récupérer les dates, niveaux d'eau et surfaces
             cursor.execute(f'''
                    SELECT
                         m.date, m.niveau_eau, h.surface_eau_m2 AS surface_en_eau,
@@ -145,7 +116,6 @@ class CalculWidget(QDialog, form_traitement):
                    ORDER BY
                         m.date;
                ''')
-
             donnees_jointes = cursor.fetchall()
 
             if not donnees_jointes:
@@ -162,12 +132,11 @@ class CalculWidget(QDialog, form_traitement):
             conn.close()
             return
 
-        # 4. insertion des données au sein de la table de données journalières
-        try:
+        try: # insertion des données au sein de la table de données journalières
             compteur_insertions = 0
             # insertion des données sous forme de boucle pour permettre l'insertion de toutes les dates et des valeurs associées
             for donnee in donnees_jointes:
-                niveau_str = donnee[1].replace(" m", "").strip() # suppr de l'unité de mesure
+                niveau_str = donnee[1]
                 date_mesure = donnee[0]
                 niveau_mesure = float(niveau_str)  # conversion du niveau en float pour avoir un nombre
                 surface_eau = float(donnee[2])  # conversion du niveau en float pour être sûr d'avoir un nombre
@@ -201,7 +170,7 @@ class CalculWidget(QDialog, form_traitement):
             conn.close()
 
             self.progressBar.setValue(100)
-            QgsMessageLog.logMessage(f"Table créée", "Top'Eau", Qgis.Info)
+            QgsMessageLog.logMessage(f"Table donnees_journalieres créée", "Top'Eau", Qgis.Info)
 
             # chargement de la table donnees_journalieres
             layer = self.charger_tables_dans_qgis('donnees_journalieres')
@@ -216,28 +185,25 @@ class CalculWidget(QDialog, form_traitement):
             QgsMessageLog.logMessage(f"Erreur lors de l'insertion des données : {e}", "Top'Eau",
                                      Qgis.Warning)
 
-    # fonction permettant de créer une table récupérant/calculant des valeurs mensuelles selon les données insérées en 2.
+    # fonction permettant de créer une table récupérant/calculant des valeurs mensuelles
     def calculs_mensuels(self):
 
-        # récupération du GPKG sélectionné par l'utilisateur
-        selected_GPKG = self.inputGPKG.filePath()
+        selected_GPKG = self.inputGPKG.filePath() # récupération du GPKG sélectionné par l'utilisateur
         if not selected_GPKG or not os.path.exists(selected_GPKG):
             QMessageBox.warning(self, "Erreur", "Veuillez sélectionner un fichier GPKG valide.")
             return None
 
-        # 1. connexion SQLite au GPKG
+        # connexion SQLite au GPKG
         conn = sqlite3.connect(selected_GPKG)
         cursor = conn.cursor()
 
-        # 2.1. suppression de la table donnees_mensuelles si elle existe
-        try:
+        try: # suppression de la table donnees_mensuelles si elle existe
             cursor.execute("DROP TABLE IF EXISTS donnees_mensuelles")
             QgsMessageLog.logMessage("Table donnees_mensuelles supprimée si elle existait", "Top'Eau", Qgis.Info)
         except Exception as e:
             QgsMessageLog.logMessage(f"Erreur lors de la suppression de la table : {e}", "Top'Eau", Qgis.Warning)
 
-        # 2.2. création de la nouvelle table "donnees_mensuelles"
-        try:
+        try: # création de la table "donnees_mensuelles"
             cursor.execute('''
                         CREATE TABLE IF NOT EXISTS donnees_mensuelles(
                             annee INTEGER,
@@ -252,13 +218,11 @@ class CalculWidget(QDialog, form_traitement):
                             nbr_jours_sup_point_bas_sup10cm INTEGER
                         )
                     ''')
-
         except Exception as e:
             QgsMessageLog.logMessage(f"Erreur lors de la création de la table : {e}", "Top'Eau", Qgis.Warning)
 
-        # 3.1. récupération du premier décile depuis la table zone_etude
         point_bas = None
-        try:
+        try: # récupération du premier décile depuis la table zone_etude
             cursor.execute('''SELECT decile_10 FROM zone_etude''')
             point_bas_result = cursor.fetchone()
             if point_bas_result:
@@ -266,14 +230,13 @@ class CalculWidget(QDialog, form_traitement):
             else:
                 QgsMessageLog.logMessage(f"'point_bas' ne retourne aucune valeur", "Top'Eau",
                                              Qgis.Warning)
-
         except Exception as e:
             QgsMessageLog.logMessage(f"Erreur lors de la requête decile sur la table zone_etude: {e}", "Top'Eau",
                                          Qgis.Warning)
 
-        # 3.2. récupération de la surface totale depuis la table zone_etude pour calculer les pourcentages
+
         surface_ze = None
-        try:
+        try: # récupération de la surface totale depuis la table zone_etude pour calculer les pourcentages
             cursor.execute('''SELECT surface_m2 FROM zone_etude''')
             surface_ze_result = cursor.fetchone()
             if surface_ze_result:
@@ -281,13 +244,11 @@ class CalculWidget(QDialog, form_traitement):
             else:
                 QgsMessageLog.logMessage(f"'surface_m2' ne retourne aucune valeur", "Top'Eau",
                                              Qgis.Warning)
-
         except Exception as e:
             QgsMessageLog.logMessage(f"Erreur lors de la requête surface sur la table zone_etude: {e}", "Top'Eau",
                                          Qgis.Warning)
 
-        # 3.3. requêtage pour obtenir les valeurs à implémenter/calculer depuis hauteur_eau et zone_etude dans la table
-        try:
+        try: # requêtage pour obtenir les valeurs à implémenter/calculer depuis hauteur_eau et zone_etude dans la table
             cursor.execute(f'''
                             INSERT INTO donnees_mensuelles
                             SELECT 
@@ -326,7 +287,7 @@ class CalculWidget(QDialog, form_traitement):
             conn.close()
 
             self.progressBar.setValue(100)
-            QgsMessageLog.logMessage(f"Table créée", "Top'Eau", Qgis.Info)
+            QgsMessageLog.logMessage(f"Table donnees_mensuelles créée", "Top'Eau", Qgis.Info)
 
             # chargement de la table donnees_mensuelles
             layer = self.charger_tables_dans_qgis('donnees_mensuelles')
@@ -341,28 +302,25 @@ class CalculWidget(QDialog, form_traitement):
             QgsMessageLog.logMessage(f"Erreur lors de l'insertion des données : {e}", "Top'Eau", Qgis.Warning)
 
 
-    # fonction permettant de créer une table récupérant/calculant des valeurs journalières selon les données insérées en 2.
+    # fonction permettant de créer une table récupérant/calculant des valeurs périodiques
     def calculs_periodiques(self):
 
-        # récupération du GPKG sélectionné par l'utilisateur
-        selected_GPKG = self.inputGPKG.filePath()
+        selected_GPKG = self.inputGPKG.filePath() # récupération du GPKG sélectionné par l'utilisateur
         if not selected_GPKG or not os.path.exists(selected_GPKG):
             QMessageBox.warning(self, "Erreur", "Veuillez sélectionner un fichier GPKG valide.")
             return None
 
-        # 1. connexion SQLite au GPKG
+        # connexion SQLite au GPKG
         conn = sqlite3.connect(selected_GPKG)
         cursor = conn.cursor()
 
-        # 2.1. suppression de la table donnees_periodiques si elle existe
-        try:
+        try: # suppression de la table donnees_periodiques si elle existe
             cursor.execute("DROP TABLE IF EXISTS donnees_periodiques")
             QgsMessageLog.logMessage("Table donnees_periodiques supprimée si elle existait", "Top'Eau", Qgis.Info)
         except Exception as e:
             QgsMessageLog.logMessage(f"Erreur lors de la suppression de la table : {e}", "Top'Eau", Qgis.Warning)
 
-        # 2.2. création de la nouvelle table "donnees_periodiques"
-        try:
+        try:  # création de la nouvelle table "donnees_periodiques"
             cursor.execute('''
                                 CREATE TABLE IF NOT EXISTS donnees_periodiques(
                                     annee INTEGER,
@@ -377,27 +335,23 @@ class CalculWidget(QDialog, form_traitement):
                                     nbr_jours_sup_point_bas_sup10cm INTEGER
                                 )
                             ''')
-
         except Exception as e:
             QgsMessageLog.logMessage(f"Erreur lors de la création de la table : {e}", "Top'Eau", Qgis.Warning)
 
-        # 3.1. récupération du premier décile depuis la table zone_etude
         point_bas = None
-        try:
+        try:  # récupération du premier décile depuis la table zone_etude
             cursor.execute('''SELECT decile_10 FROM zone_etude''')
             point_bas_result = cursor.fetchone()
             if point_bas_result:
                 point_bas = point_bas_result[0]
             else:
                 QgsMessageLog.logMessage(f"'point_bas' ne retourne aucune valeur", "Top'Eau", Qgis.Warning)
-
         except Exception as e:
             QgsMessageLog.logMessage(f"Erreur lors de la requête decile sur la table zone_etude: {e}", "Top'Eau",
                                      Qgis.Warning)
 
-        # 3.2. récupération de la surface totale depuis la table zone_etude pour calculer les pourcentages
         surface_ze = None
-        try:
+        try: # récupération de la surface totale depuis la table zone_etude pour calculer les pourcentages
             cursor.execute('''SELECT surface_m2 FROM zone_etude''')
             surface_ze_result = cursor.fetchone()
             if surface_ze_result:
@@ -405,14 +359,11 @@ class CalculWidget(QDialog, form_traitement):
             else:
                 QgsMessageLog.logMessage(f"'surface_m2' ne retourne aucune valeur", "Top'Eau",
                                          Qgis.Warning)
-
         except Exception as e:
             QgsMessageLog.logMessage(f"Erreur lors de la requête surface sur la table zone_etude: {e}", "Top'Eau",
                                      Qgis.Warning)
 
-        # 3.3. requêtage pour obtenir les valeurs à implémenter/calculer depuis hauteur_eau et zone_etude dans la table
-        # NB : les dates délimitant les périodes ont été définies par Olivier Gore
-        try:
+        try:  # requêtage pour obtenir les valeurs à implémenter/calculer depuis hauteur_eau et zone_etude dans la table
             cursor.execute(f'''
                             INSERT INTO donnees_periodiques
                                     SELECT 
@@ -446,16 +397,14 @@ class CalculWidget(QDialog, form_traitement):
                                         WHERE m.niveau_eau IS NOT NULL
                                         GROUP BY substr(m.date, 1, 4), periode
                                         ORDER BY annee, periode;''')
-
+            # NB : les dates délimitant les périodes ont été définies par Olivier Gore
             conn.commit()
             conn.close()
 
             self.progressBar.setValue(100)
+            QgsMessageLog.logMessage(f"Table donnes_periodiques créée", "Top'Eau", Qgis.Info)
 
-            QgsMessageLog.logMessage(f"Table créée", "Top'Eau", Qgis.Info)
-
-            # chargement de la table donnees_periodiques
-            layer = self.charger_tables_dans_qgis('donnees_periodiques')
+            layer = self.charger_tables_dans_qgis('donnees_periodiques') # chargement de la table donnees_periodiques
             if layer:
                 QgsMessageLog.logMessage(f"Table donnees_periodiques chargée dans QGIS", "Top'Eau", Qgis.Info)
                 return layer
@@ -471,43 +420,32 @@ class CalculWidget(QDialog, form_traitement):
     def charger_tables_dans_qgis(self, table_name = None):
 
         try:
-            # référence à l'interface QGIS
-            from qgis.utils import iface
-
-            # récupération du GPKG
-            selected_GPKG = self.inputGPKG.filePath()
+            from qgis.utils import iface # référence à l'interface QGIS
+            selected_GPKG = self.inputGPKG.filePath() # récupération du GPKG
 
             # création d'un seul groupe pour organiser les couches dans le projet QGIS
             root = QgsProject.instance().layerTreeRoot()
             group_name =  f"Top'Eau - Indicateurs calculés"
             group = root.findGroup(group_name)
             if not group:
-                # création du groupe en position 0 (au début) seulement s'il n'existe pas
-                group = root.insertGroup(0, group_name)
+                group = root.insertGroup(0, group_name) # création du groupe en position 0 (au début) s'il n'existe pas
                 QgsMessageLog.logMessage(f"Groupe '{group_name}' créé", "Top'Eau", Qgis.Info)
             else:
                 QgsMessageLog.logMessage(f"Groupe '{group_name}' trouvé, ajout des couches", "Top'Eau", Qgis.Info)
 
-            # définition de la table à charger
-            if table_name:
-                # chargement de la table qui vient d'être créée
+            if table_name: # chargement de la table qui vient d'être créée
                 tables_attributaires = [table_name]
-            else:
-                # si erreur : chargement toutes les tables par défaut
+            else: # si erreur : chargement toutes les tables par défaut
                 tables_attributaires = ['donnees_mensuelles', 'donnees_periodiques', 'donnees_journalieres']
 
             loaded_layer = None  # stockage de la couche chargée
 
             for table in tables_attributaires:
                 try:
-                    # création d'un URI pour les tables du GPKG
-                    uri = f"{selected_GPKG}|layername={table}"
+                    uri = f"{selected_GPKG}|layername={table}" # création d'un URI pour les tables du GPKG
+                    layer = QgsVectorLayer(uri, f"{table}", "ogr") # création de la couche
 
-                    # création de la couche
-                    layer = QgsVectorLayer(uri, f"{table}", "ogr")
-
-                    if layer.isValid():
-                        # ajout de la couche au projet dans le groupe si elle est valide
+                    if layer.isValid(): # ajout de la couche au projet dans le groupe si elle est valide
                         QgsProject.instance().addMapLayer(layer, False)
                         group.addLayer(layer)
                         loaded_layer = layer
