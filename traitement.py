@@ -17,7 +17,13 @@ import json
 import math
 import statistics
 # import librairie manipulation raster et gpkg
-import rasterio
+try :
+    import rasterio
+except ImportError :
+    import subprocess
+    import sys
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "rasterio"])
+    import rasterio
 from rasterio.transform import from_origin
 import numpy as np
 import subprocess
@@ -239,6 +245,7 @@ class TraitementWidget(QDialog, params.form_traitement):
         # initialisation des variables pour les graphs
         self.niveaueau_hauteur = []
         self.surface_hauteur = []
+        self.sommesurf_hauteur = []
 
         progress_step = 100 / nb_niveaux if nb_niveaux > 0 else 0 # calcul du pas de progression pour la barre
 
@@ -287,6 +294,7 @@ class TraitementWidget(QDialog, params.form_traitement):
                     # collecte les données pour le graphique
                     self.niveaueau_hauteur.append(self.current_level)
                     self.surface_hauteur.append(surface_totale)
+                    self.sommesurf_hauteur.append(classe_3_surf + classe_4_surf +classe_5_surf +classe_6_surf + classe_7_surf)
 
                     # alimentation de la table SQLite
                     generation.ajouter_donnees_table_gpkg(gpkg_path, surface_totale, volume_total,
