@@ -181,7 +181,7 @@ class BiodivWidget(QDialog, form_traitement):
                         cursor.execute(query)
                         occurrences = cursor.fetchall()
                         if occurrences:
-                            print(f"  -> Trouvé {len(occurrences)} résultats lors de la requête")
+
                             all_occurrences.extend(occurrences)
 
                             # initialisation d'une variable récupérant le niveau d'eau lié à la date correspondante
@@ -194,19 +194,19 @@ class BiodivWidget(QDialog, form_traitement):
                                     try: # tentative de conversion directe (lorsque le type de donnée est numérique)
                                         niveau_eau_float = float(niveau_eau)
                                         niveau_eau_cm = int(niveau_eau_float * 100)
-                                        print("Conversion directe réussie - Niveau d'eau en cm :", niveau_eau_cm)
                                     except (ValueError, TypeError):
                                         try: # traitement si la donnée est en format chaîne de caractères
                                             niveau_eau_corrige = float(str(niveau_eau)[:-2].replace(",", "."))
                                             niveau_eau_cm = int(niveau_eau_corrige * 100)
-                                            print("Niveau d'eau en cm :", niveau_eau_cm)
                                         except Exception as e:
                                             QMessageBox.warning(self, "Erreur",
                                                                 f"Impossible de convertir la valeur : {niveau_eau}")
                                             continue
-                                    else:
-                                        QMessageBox.warning(self, "Erreur",
-                                                            "Il n'y a pas de niveau d'eau pour la/les date/s sélectionnée/s")
+                                else:
+                                    QMessageBox.warning(self, "Erreur",
+                                                        "Il n'y a pas de niveau d'eau pour la/les date/s sélectionnée/s : "
+                                                        "veuillez vérifier que les niveaux d'eau de la table mesure ne sont pas nuls, "
+                                                        "ou que le GPKG contient bien des rasters avec les niveaux d'eau correspondants")
                                     found = True
 
                             # requête pour récupérer les tables raster du GPKG
@@ -223,7 +223,6 @@ class BiodivWidget(QDialog, form_traitement):
                                         layer_niveau_eau = QgsRasterLayer(uri, raster_name, "gdal") # création de la couche raster
                                         if layer_niveau_eau.isValid():
                                             raster_layers.append(layer_niveau_eau)
-                                            print(f"Raster chargé avec succès: {raster_name}")
                                             raster_date_mapping.append({
                                                 'raster': layer_niveau_eau,
                                                 'date': value,  # date originale
@@ -232,7 +231,7 @@ class BiodivWidget(QDialog, form_traitement):
                                                 'raster_name': raster_name
                                             })
                                         else:
-                                            print(f"Erreur: Le raster {raster_name} n'est pas valide")
+                                            QgsMessageLog.logMessage(f"Le raster n'est pas valide","Top'Eau", Qgis.Critical)
                                     except Exception as e:
                                         QgsMessageLog.logMessage(
                                             f"Erreur lors du chargement du raster {raster_name}: {str(e)}", "Top'Eau",
@@ -251,8 +250,7 @@ class BiodivWidget(QDialog, form_traitement):
                 QMessageBox.warning(self, "Erreur", "Aucun raster correspondant trouvé.")
                 return None
         except Exception as e:
-            QgsMessageLog.logMessage(f"Erreur lors de la lecture du GPKG: {str(e)}",
-                                     "Top'Eau", Qgis.Critical)
+            QgsMessageLog.logMessage(f"Erreur lors de la lecture du GPKG: {str(e)}","Top'Eau", Qgis.Critical)
             return None
 
     # fonction permettant de récupérer le vecteur ponctuel fourni par l'utilisateur
