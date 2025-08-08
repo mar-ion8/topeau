@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 # Import module PyQt et API PyQGIS
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
@@ -12,40 +11,23 @@ import os
 import sqlite3 #import librairie nécessaire au requêtage SQL
 import pandas as pd # import librairie lecture CSV
 
-# appel emplacement des fichiers de stockage des sorties temporaires -- temp
-temp_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "temp")
-# lien entre traitement.py et traitement.ui
+# lien entre imports.py et import.ui
 ui_path = os.path.dirname(os.path.abspath(__file__))
 ui_path = os.path.join(ui_path, "ui")
 form_traitement, _ = uic.loadUiType(os.path.join(ui_path, "import.ui"))
 
-# mise en place de la classe TraitementWidget
-# va regrouper l'ensemble des fonctions relatives aux traitements à réaliser
+# mise en place de la classe ImportWidget qui va regrouper l'ensemble des fonctions relatives aux traitements à réaliser
 class ImportWidget(QDialog, form_traitement):
     def __init__(self, iface):
         QDialog.__init__(self)
 
-        # création de l'interface de la fenêtre QGIS
-        self.setupUi(self)
-        # ajustement de la taille de la fenêtre pour qu'elle soit fixe
-        #self.setFixedSize(600, 400)
-        # nom donné à la fenêtre
-        self.setWindowTitle("Top'Eau - Import des données eau (relevés bouées, terrain et piézomètres)")
-
-        # Bouton "OK / Annuler"
-        self.terminer.rejected.connect(self.reject)
-        # connexion de la barre de progression
-        self.progressBar.setValue(0)
-        # Bouton "Générer l'import des données eau"
-        self.generer.clicked.connect(self.inserer_donnees)
-        # Bouton "Effacer"
-        self.erase.clicked.connect(self.effacer_donnees)
-        # association de filtres à la sélection de couches dans le projet QGIS
-        self.inputReleves_2.setFilters(
-            QgsMapLayerProxyModel.NoGeometry |
-            QgsMapLayerProxyModel.PluginLayer
-        )
-
+        self.setupUi(self) # création de l'interface de la fenêtre QGIS
+        self.setWindowTitle("Top'Eau - Import des données eau (relevés bouées, terrain et piézomètres)") # nom donné à la fenêtre
+        self.terminer.rejected.connect(self.reject) # Bouton "OK / Annuler"
+        self.progressBar.setValue(0) # connexion de la barre de progression
+        self.generer.clicked.connect(self.inserer_donnees) # Bouton "Générer l'import des données eau"
+        self.erase.clicked.connect(self.effacer_donnees) # Bouton "Effacer"
+        self.inputReleves_2.setFilters(QgsMapLayerProxyModel.NoGeometry)# filtres pour la sélection de couches dans le projet QGIS
         # association de l'import de fichiers aux fonctions de désactivation des listes déroulantes
         self.inputReleves.fileChanged.connect(self.maj_etat_inputReleves2)
 
@@ -64,7 +46,7 @@ class ImportWidget(QDialog, form_traitement):
     # fonction permettant de récupérer les données depuis le CSV et de les insérer dans le GPKG sélectionné
     def inserer_donnees(self):
 
-        # récupération des chemins et variables au moment du clic
+        # récupération des chemins et variables
         selected_GPKG = self.inputGPKG.filePath()
         nom_champ = self.nomChamp.text()
         nom_date = self.nomChamp_2.text()
@@ -93,7 +75,6 @@ class ImportWidget(QDialog, form_traitement):
                 QMessageBox.warning(self, "Erreur", "Veuillez sélectionner un fichier de relevés eau.")
                 return
             use_layer = True
-
         else:
             if not os.path.exists(selected_CSV): # vérification que le fichier CSV existe
                 QMessageBox.warning(self, "Erreur", f"Le fichier CSV n'existe pas : {selected_CSV}")
@@ -158,7 +139,6 @@ class ImportWidget(QDialog, form_traitement):
             conn.commit()
             QgsMessageLog.logMessage(f"Table SQLite implémentée avec succès - {len(df)} lignes insérées", "Top'Eau",
                                      Qgis.Success)
-
             self.progressBar.setValue(100) # mise à jour de la barre de progression
 
             return True
