@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # Import module PyQt et API PyQGIS
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
@@ -10,21 +8,13 @@ from qgis.core import Qgis, QgsMessageLog
 from qgis.utils import iface
 from qgis import processing
 import os
-#import librairie nécessaire au requêtage SQL
-import sqlite3
-# import librairie lecture CSV
-import pandas as pd
-# import librairie manipulation de valeurs de type date
-from datetime import datetime, timedelta
-
+import sqlite3 #import librairie nécessaire au requêtage SQL
+import pandas as pd # import librairie lecture CSV
+from datetime import datetime, timedelta # import librairie manipulation de valeurs de type date
 # import de la fonction de conversion de date
 from . import conversion_date
 from .conversion_date import convert_to_iso_date
-
-# appel emplacement des fichiers de stockage des sorties temporaires -- temp
-temp_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "temp")
-
-# lien entre traitement.py et traitement.ui
+# lien entre biodiv.py et biodiv.ui
 ui_path = os.path.dirname(os.path.abspath(__file__))
 ui_path = os.path.join(ui_path, "ui")
 form_traitement, _ = uic.loadUiType(os.path.join(ui_path, "biodiv.ui"))
@@ -33,24 +23,18 @@ form_traitement, _ = uic.loadUiType(os.path.join(ui_path, "biodiv.ui"))
 class BiodivWidget(QDialog, form_traitement):
     def __init__(self, iface):
         QDialog.__init__(self)
-        # création de l'interface de la fenêtre QGIS
-        self.setupUi(self)
-        # nom donné à la fenêtre
-        self.setWindowTitle("Top'Eau - Analyse des données eau : écoute biodiversité")
 
-        # Bouton "OK / Annuler"
-        self.terminer.rejected.connect(self.reject)
-        # connexion de la barre de progression
-        self.progressBar.setValue(0)
-        # Bouton "Générer l'import'"
-        self.generer.clicked.connect(self.recup_raster)
+        self.setupUi(self) # création de l'interface de la fenêtre QGIS
+        self.setWindowTitle("Top'Eau - Analyse des données eau : écoute biodiversité") # nom donné à la fenêtre
+        self.terminer.rejected.connect(self.reject) # bouton "OK / Annuler"
+        self.progressBar.setValue(0) # connexion de la barre de progression
+        self.generer.clicked.connect(self.recup_raster)# bouton "Générer l'import"
 
         # association de filtres à la sélection de couches dans le projet QGIS
         self.inputPoints_2.setFilters( QgsMapLayerProxyModel.PointLayer | QgsMapLayerProxyModel.PluginLayer)
         # association de l'import de fichiers aux fonctions de désactivation des listes déroulantes
         self.inputPoints.fileChanged.connect(self.maj_etat_inputPoints_2)
-
-        # Connecter le changement d'état des boutons radio
+        # connexion du changement d'état des boutons radio
         self.radioChoix.toggled.connect(self.on_radio_toggled)
         self.radioVecteur.toggled.connect(self.on_radio_toggled)
 
@@ -58,6 +42,7 @@ class BiodivWidget(QDialog, form_traitement):
         QDialog.reject(self)
         return
 
+    # fonction permettant de contrôler les coches
     def on_radio_toggled(self):
         if self.radioChoix.isChecked() :
             print("Radio cochée")
@@ -76,30 +61,26 @@ class BiodivWidget(QDialog, form_traitement):
         else:
             self.inputPoints_2.setEnabled(True)
 
-    # 1. fonction permettant la récupération du raster depuis le GPKG à partir de la/des date/s fournie/s par l'utilisateur
+    # fonction de récupération du raster depuis le GPKG à partir de la/des date/s fournie/s par l'utilisateur
     def recup_raster(self):
 
-        # chargement de la date sélectionnée par l'utilisateur dans une variable
-        # la date peut être contenue dans un fichier de point ou comprise dans une plage de dates sélectionnée par l'utilisateur
+        # première étape : chargement de la date sélectionnée par l'utilisateur dans une variable
+
         if self.radioChoix.isChecked() : # si l'utilisateur coche "Ou plage étudiée"...
-            # récupération des dates depuis les QDateEdit
-            start_qdate = self.dateDebut.date()
-            end_qdate = self.dateFin.date()
-            # ...conversion des dates récupérées en dates réelles...
+            start_qdate = self.dateDebut.date() # récupération de la date de début depuis le widget calendrier
+            end_qdate = self.dateFin.date() # récupération de la date de fin
+            # conversion des dates récupérées en dates réelles
             start_date = datetime(start_qdate.year(), start_qdate.month(), start_qdate.day()).date()
             end_date = datetime(end_qdate.year(), end_qdate.month(), end_qdate.day()).date()
-
-            # ...vérification de l'ordre chronologique (erreur si la date de fin est avant la date de début)...
-            if start_date > end_date:
+            if start_date > end_date: # vérif de l'ordre chronologique (erreur si la date de fin est avant la date de début)
                 start_date, end_date = end_date, start_date
-
-            date_range = [] # ...construction de la liste complète des dates dans l'intervalle...
+            # construction de la liste complète des dates dans l'intervalle
+            date_range = []
             current_date = start_date
             while current_date <= end_date:
                 date_range.append(current_date)
                 current_date += timedelta(days=1)
-
-            # ...récupération des dates récupérées dans l'intervalle sous la variable values qui est convertie en ISO
+            # récupération des dates récupérées dans l'intervalle sous la variable values qui est convertie en ISO
             # avant d'être récupérée dans les requêtes SQL effectuées sur la table mesure
             values = date_range
 
@@ -123,7 +104,6 @@ class BiodivWidget(QDialog, form_traitement):
             if not field_name or field_name.strip() == "": # & vérification de sa validité...
                 QMessageBox.warning(self, "Erreur", "Veuillez renseigner le nom du champ.")
                 return None
-
             try: # ...chargement de la couche selon la source (local ou projet)...
                 if use_layer:
                     layer = selected_points
@@ -133,14 +113,14 @@ class BiodivWidget(QDialog, form_traitement):
                     QgsMessageLog.logMessage("Erreur: La couche n'est pas valide", "Top'Eau", Qgis.Critical)
                     QMessageBox.critical(self, "Erreur", "La couche de points n'est pas valide")
                     return None
-                # ...vérification de l'existence du champ...
+                # vérification de l'existence du champ
                 field_names = [field.name() for field in layer.fields()]
                 if field_name not in field_names:
                     error_msg = f"Le champ '{field_name}' n'existe pas.\nChamps disponibles: {', '.join(field_names)}"
                     QgsMessageLog.logMessage(error_msg, "Top'Eau", Qgis.Critical)
                     QMessageBox.critical(self, "Erreur", error_msg)
                     return None
-                # ...extraction des valeurs
+                # extraction des valeurs
                 values = []
                 valid_features = 0
 
@@ -166,6 +146,8 @@ class BiodivWidget(QDialog, form_traitement):
 
         self.progressBar.setValue(25) # mise à jour de la barre de progression
 
+        # deuxième étape : requêtage sur la table mesure du GPKG pour travailler avec les correspondances
+
         try :
 
             selected_GPKG = self.inputGPKG.filePath() # récupération du GPKG saisi par l'utilisateur
@@ -177,22 +159,16 @@ class BiodivWidget(QDialog, form_traitement):
             conn = sqlite3.connect(selected_GPKG)
             cursor = conn.cursor()
 
-            # lecture ligne par ligne des données de la table mesure et requêtage sur les valeurs concernées
-            # instanciation de variables en tuple pour leur permettre de récupérer une lsite de plusieurs variables
+            # variables pour récupérer les données lors de srequêtes sur la table mesure
             all_occurrences = []
             valeurs_corr = []
             raster_layers = []
 
-            # ajout d'une variable pour stocker les informations de correspondance entre les valeurs et les rasters
-            # pour faciliter le traitement des données après la récupération des rasters
-            raster_date_mapping = []
+            raster_date_mapping = [] # stocker les informations de correspondance entre les valeurs et les rasters
 
-            # boucle sur chacune des dates récupérées en amont depuis le fichier vecteur ou les calendriers pour savoir...
-            # 1. si elles correspondent à des dates stockées dans la table "mesure" du GPKG et récupérer celles qui correspondent
-            for value in values:
+            for value in values: # boucle sur chacune des dates récupérées en amont pour récupérer les raster correspondants
 
                 date_str = convert_to_iso_date(value) # conversion des dates récupérées pour compatibilité avec le format GPKG
-
                 queries = [
                     f"SELECT *, niveau_eau FROM mesure WHERE DATE(date) = '{date_str}'",
                     f"SELECT *, niveau_eau FROM mesure WHERE SUBSTR(date, 1, 10) = '{date_str}'",
@@ -208,10 +184,8 @@ class BiodivWidget(QDialog, form_traitement):
                             print(f"  -> Trouvé {len(occurrences)} résultats lors de la requête")
                             all_occurrences.extend(occurrences)
 
-                            # 2. quel niveau d'eau relevé sur le terrain est associé à cette date
                             # initialisation d'une variable récupérant le niveau d'eau lié à la date correspondante
-                            # en cm pour le requêtage sur les rasters
-                            niveau_eau_cm = None
+                            niveau_eau_cm = None # conversion en cm pour le requêtage sur les rasters
 
                             for occurrence in occurrences: # boucle sur les dates qui correspondent
                                 niveau_eau = occurrence[-1]  # on récupère le résultat du dernier champ sélectionné en SQL (niveau_eau)
@@ -236,10 +210,8 @@ class BiodivWidget(QDialog, form_traitement):
                                     found = True
 
                             # requête pour récupérer les tables raster du GPKG
-                            cursor.execute(f"""
-                                           SELECT table_name FROM gpkg_contents 
-                                           WHERE data_type = 'tiles' OR data_type = '2d-gridded-coverage'
-                                       """)
+                            cursor.execute(f""" SELECT table_name FROM gpkg_contents 
+                                           WHERE data_type = 'tiles' OR data_type = '2d-gridded-coverage' """)
                             results = cursor.fetchall()
                             rasters = [row[0] for row in results]
 
@@ -248,8 +220,7 @@ class BiodivWidget(QDialog, form_traitement):
                                 if str(int(niveau_eau_cm)) in raster_name:
                                     uri = f"GPKG:{selected_GPKG}:{raster_name}"
                                     try:
-                                        # création de la couche raster
-                                        layer_niveau_eau = QgsRasterLayer(uri, raster_name, "gdal")
+                                        layer_niveau_eau = QgsRasterLayer(uri, raster_name, "gdal") # création de la couche raster
                                         if layer_niveau_eau.isValid():
                                             raster_layers.append(layer_niveau_eau)
                                             print(f"Raster chargé avec succès: {raster_name}")
@@ -273,8 +244,7 @@ class BiodivWidget(QDialog, form_traitement):
                                                Qgis.Warning)
             conn.close()
 
-            # appel de la fonction recup_lame_eau avec les rasters trouvés
-            if raster_layers:
+            if raster_layers: # appel de la fonction recup_lame_eau avec les rasters trouvés
                 mode_intervalle = self.radioChoix.isChecked()
                 return self.recup_lame_eau(raster_layers, raster_date_mapping, mode_intervalle)
             else:
@@ -285,9 +255,7 @@ class BiodivWidget(QDialog, form_traitement):
                                      "Top'Eau", Qgis.Critical)
             return None
 
-
-    # fonction permettant de récupérer le vecteur ponctuel fourni par l'utilisateur et de renvoyer à l'une ou l'autre
-    # des fonctions qui suivent en fonction du choix renseigné pour la date (champ ou intervalle)
+    # fonction permettant de récupérer le vecteur ponctuel fourni par l'utilisateur
     def recup_lame_eau(self, raster_layers, raster_date_mapping, mode_intervalle):
 
         selected_points = self.inputPoints.lineEdit().text() # récupération du vecteur renseigné par l'utilisateur
@@ -321,7 +289,6 @@ class BiodivWidget(QDialog, form_traitement):
             QMessageBox.critical(self, "Erreur", error_msg)
             return None
 
-
     # fonction permettant de dupliquer chaque entité en fonction de chaque date comprise dans l'intervalle
     # et de relever un niveau d'eau unique et une lame d'eau unique pour chaque date
     def _process_interval_mode(self, layer_points, raster_date_mapping):
@@ -345,10 +312,9 @@ class BiodivWidget(QDialog, form_traitement):
         temp_layer.addAttribute(field_round)
         temp_layer.commitChanges()
 
-        # création d'une variable permettant de récupérer les informations à ajouter aux champs créés
-        features_to_add = []
-        # pour chaque entité avec un id propre contenue dans le fichier vecteur ponctuel fourni par l'utilisateur...
-        for original_feature in layer_points.getFeatures():
+        features_to_add = [] # variable permettant de récupérer les informations à ajouter aux champs créés
+
+        for original_feature in layer_points.getFeatures(): # pour chaque entité contenue dans le fichier vecteur fourni par l'utilisateur...
             feature_id = original_feature.id()
 
             for mapping in raster_date_mapping: # ... boucle sur chaque correspondance raster-date...
@@ -378,28 +344,24 @@ class BiodivWidget(QDialog, form_traitement):
             single_feature_layer.commitChanges()
 
             # application de l'extraction de valeur (algorithme QGIS : "Prélèvement des valeurs rasters vers ponctuels")
-            # pour récupérer l'information de la lame d'eau
             result = processing.run("native:rastersampling", {
                 'INPUT': single_feature_layer,
                 'RASTERCOPY': raster,
                 'COLUMN_PREFIX': 'temp_',
                 'OUTPUT': 'memory:'
-            })
-            # récupération de la valeur et mise à jour de la couche
-            result_layer = result['OUTPUT']
+            }) # récupérer l'information de la lame d'eau
+            result_layer = result['OUTPUT'] # récupération de la valeur et mise à jour de la couche
             for result_feature in result_layer.getFeatures():
-                # récupération de la valeur du raster
-                raster_value = None
+                raster_value = None # récupération de la valeur du raster
                 for field in result_feature.fields():
                     if field.name().startswith('temp_'):
                         raster_value = result_feature.attribute(field.name())
                         break
-                # ajout de l'entité avec la valeur
-                feature.setAttribute("lame_eau", raster_value)
+                feature.setAttribute("lame_eau", raster_value) # ajout de l'entité avec la valeur
                 temp_layer.addFeature(feature)
 
             progress = 50 + (25 * (i + 1) / len(features_to_add))
-            self.progressBar.setValue(int(progress)) # mise à jour de la progression
+            self.progressBar.setValue(int(progress)) # mise à jour de la barre de progression
 
         temp_layer.commitChanges()
         QgsProject.instance().addMapLayer(temp_layer) # ajout de la couche au projet QGIS
@@ -409,10 +371,8 @@ class BiodivWidget(QDialog, form_traitement):
             self.iface.mapCanvas().refresh() # rafraîchissement de la vue
         return temp_layer
 
-
-    # fonction permettant de conserver le nombre d'entités de base en ajoutant à la table attributaire de la couche en
-    # entrée une seule colonne contenant la lame d'eau récupérée pour une entité en fonction de la date à laquelle
-    # elle est associée dans le fichier vecteur
+    # fonction ajoutant à la table attributaire de la couche en entrée une seule colonne contenant la lame d'eau
+    # récupérée pour une entité en fonction de la date à laquelle elle est associée dans le fichier vecteur
     def _process_field_mode(self, layer_points, raster_date_mapping):
 
         field_name = self.nomChamp.text() # récupération du nom du champ date
@@ -430,17 +390,14 @@ class BiodivWidget(QDialog, form_traitement):
         temp_layer.addAttribute(QgsField("niveau_eau_cm", QVariant.Int))
         temp_layer.commitChanges()
 
-        # création d'un dictionnaire pour un accès rapide aux rasters par date
-        date_to_raster = {}
-        # création d'un dictionnaire pour un accès rapide aux niveaux d'eau relevés par date
-        date_to_niveau_eau = {}
+        date_to_raster = {} # accès rapide aux rasters par date
+        date_to_niveau_eau = {}  # accès rapide aux niveaux d'eau relevés par date
         for mapping in raster_date_mapping:
-            # Utilisation de la date convertie comme clé
+            # utilisation de la date convertie comme clé
             date_key = convert_to_iso_date(mapping['date'])
             date_to_raster[date_key] = mapping['raster']
             date_to_niveau_eau[date_key] = mapping['niveau_eau']
-
-            # ajout aussi de la date originale comme clé alternative
+            # ajout de la date originale comme clé alternative
             date_to_raster[str(mapping['date'])] = mapping['raster']
             date_to_niveau_eau[str(mapping['date'])] = mapping['niveau_eau']
 
@@ -448,11 +405,9 @@ class BiodivWidget(QDialog, form_traitement):
         processed_count = 0
 
         # traitement de chaque point individuellement (un point créé = un point récupéré sur la couche de base)
-        # le traitement traite toutes les entités du fichier vecteur donné par l'utilisateur une par une
-        for feature in layer_points.getFeatures():
+        for feature in layer_points.getFeatures(): # traitement de toutes les entités du fichier vecteur utilisateur une par une
             try:
-
-                point_date = feature[field_name] # récupération de la date du point
+                point_date = feature[field_name] # récupération de la date associée au point
                 if point_date is None:
                     print(f"Point ID {feature.id()} : date manquante")
                     continue
@@ -491,16 +446,14 @@ class BiodivWidget(QDialog, form_traitement):
                 single_point_layer.addFeature(feature)
                 single_point_layer.commitChanges()
 
-                # récupération de la lame d'eau pour ce point spécifique
                 result = processing.run("native:rastersampling", {
                     'INPUT': single_point_layer,
                     'RASTERCOPY': corresponding_raster,
                     'COLUMN_PREFIX': 'temp_lame_eau_',
                     'OUTPUT': f'memory:'
-                })
+                }) # récupération de la lame d'eau pour ce point spécifique
 
-                # récupération de la couche temporaire résultante dans une variable pour l'implémenter
-                result_layer = result['OUTPUT']
+                result_layer = result['OUTPUT'] # récupération de la couche temporaire résultante pour l'implémenter
                 # création de la géométrie de la nouvelle entité
                 for result_feature in result_layer.getFeatures():
                     new_feature = QgsFeature(temp_layer.fields())
@@ -518,16 +471,14 @@ class BiodivWidget(QDialog, form_traitement):
                     new_feature.setAttribute("lame_eau", lame_eau_value)
                     new_feature.setAttribute("niveau_eau_cm", corresponding_niveau_eau)
                     features_to_add.append(new_feature)
-                    # arrêt de la boucle après l'implémentation pour que les traitements recommencent sur une autre entité
-                    break
+                    break # arrêt de la boucle après l'implémentation pour que les traitements recommencent sur une autre entité
 
-                processed_count += 1 # variable pour mettre à jour dynamiquement la barre de progression
+                processed_count += 1
                 progress = 50 + (25 * processed_count / layer_points.featureCount())
                 self.progressBar.setValue(int(progress)) # mise à jour de la barre de progression
 
             except Exception as e:
-                QgsMessageLog.logMessage(f"Erreur lors du traitement du point ID {feature.id()} : {e}",
-                                         "Top'Eau", Qgis.Critical)
+                QgsMessageLog.logMessage(f"Erreur lors du traitement du point ID {feature.id()} : {e}","Top'Eau", Qgis.Critical)
 
                 # ajout du point avec valeurs nulles en cas d'erreur
                 new_feature = QgsFeature(temp_layer.fields())
