@@ -240,6 +240,7 @@ class CalculWidget(QDialog, form_traitement):
         try:
             cursor.execute('''
                         CREATE TABLE IF NOT EXISTS donnees_mensuelles(
+                            annee INTEGER,
                             mois STRING,
                             moyenne_surface_eau_m2 REAL,
                             moyenne_surface_eau_sup_10cm REAL,
@@ -290,35 +291,36 @@ class CalculWidget(QDialog, form_traitement):
             cursor.execute(f'''
                             INSERT INTO donnees_mensuelles
                             SELECT 
-                                    CASE 
-                                        WHEN SUBSTRING(m.date, 6, 2) = '01' THEN 'janvier'
-                                        WHEN SUBSTRING(m.date, 6, 2) = '02' THEN 'fevrier'
-                                        WHEN SUBSTRING(m.date, 6, 2) = '03' THEN 'mars'
-                                        WHEN SUBSTRING(m.date, 6, 2) = '04' THEN 'avril'
-                                        WHEN SUBSTRING(m.date, 6, 2) = '05' THEN 'mai'
-                                        WHEN SUBSTRING(m.date, 6, 2) = '06' THEN 'juin'
-                                        WHEN SUBSTRING(m.date, 6, 2) = '07' THEN 'juillet'
-                                        WHEN SUBSTRING(m.date, 6, 2) = '08' THEN 'aout'
-                                        WHEN SUBSTRING(m.date, 6, 2) = '09' THEN 'septembre'
-                                        WHEN SUBSTRING(m.date, 6, 2) = '10' THEN 'octobre'
-                                        WHEN SUBSTRING(m.date, 6, 2) = '11' THEN 'novembre'
-                                        WHEN SUBSTRING(m.date, 6, 2) = '12' THEN 'decembre'
-                                    END AS mois,
-                                    ROUND(AVG(h.surface_eau_m2), 2) AS moyenne_surface_eau_m2,
-                                    ROUND(AVG(h.classe_3 + h.classe_4 + h.classe_5 + h.classe_6 + h.classe_7), 2) 
-                                        AS moyenne_surface_eau_sup_10cm,
-                                    ROUND(AVG(m.niveau_eau) - '{point_bas}', 2) AS stress_inondation,
-                                    ROUND(('{point_bas}' - 0.42) - AVG(m.niveau_eau), 2) AS stress_hydrique,
-                                    ROUND((AVG(h.surface_eau_m2) / '{surface_ze}' * 100), 2) AS pourcentage_inondation,
-                                    ROUND((AVG(h.classe_3 + h.classe_4 + h.classe_5 + h.classe_6 + h.classe_7) / '{surface_ze}') * 100 , 2) 
-                                                AS pourcentage_inondation_sup_10cm,
-                                    COUNT(CASE WHEN m.niveau_eau > '{point_bas}' THEN 1 END) AS nbr_jours_sup_point_bas,
-                                    COUNT(CASE WHEN m.niveau_eau > ('{point_bas}'+0.10) THEN 1 END) AS nbr_jours_sup_point_bas_sup10cm
-                                FROM mesure m
-                                LEFT JOIN hauteur_eau h ON REPLACE(m.niveau_eau, ' m', '') = h.niveau_eau
-                                WHERE m.niveau_eau IS NOT NULL
-                                GROUP BY mois
-                                ORDER BY m.date''')
+                                CAST(substr(m.date, 1, 4) AS INTEGER) AS annee,
+                                CASE 
+                                    WHEN substr(m.date, 6, 2) = '01' THEN 'janvier'
+                                    WHEN substr(m.date, 6, 2) = '02' THEN 'fevrier'
+                                    WHEN substr(m.date, 6, 2) = '03' THEN 'mars'
+                                    WHEN substr(m.date, 6, 2) = '04' THEN 'avril'
+                                    WHEN substr(m.date, 6, 2) = '05' THEN 'mai'
+                                    WHEN substr(m.date, 6, 2) = '06' THEN 'juin'
+                                    WHEN substr(m.date, 6, 2) = '07' THEN 'juillet'
+                                    WHEN substr(m.date, 6, 2) = '08' THEN 'aout'
+                                    WHEN substr(m.date, 6, 2) = '09' THEN 'septembre'
+                                    WHEN substr(m.date, 6, 2) = '10' THEN 'octobre'
+                                    WHEN substr(m.date, 6, 2) = '11' THEN 'novembre'
+                                    WHEN substr(m.date, 6, 2) = '12' THEN 'decembre'
+                                END AS mois,
+                                ROUND(AVG(h.surface_eau_m2), 2) AS moyenne_surface_eau_m2,
+                                ROUND(AVG(h.classe_3 + h.classe_4 + h.classe_5 + h.classe_6 + h.classe_7), 2) 
+                                    AS moyenne_surface_eau_sup_10cm,
+                                ROUND(AVG(CAST(REPLACE(m.niveau_eau, ' m', '') AS REAL)) - {point_bas}, 2) AS stress_inondation,
+                                ROUND(({point_bas} - 0.42) - AVG(CAST(REPLACE(m.niveau_eau, ' m', '') AS REAL)), 2) AS stress_hydrique,
+                                ROUND((AVG(h.surface_eau_m2) / {surface_ze} * 100), 2) AS pourcentage_inondation,
+                                ROUND((AVG(h.classe_3 + h.classe_4 + h.classe_5 + h.classe_6 + h.classe_7) / {surface_ze}) * 100, 2) 
+                                    AS pourcentage_inondation_sup_10cm,
+                                COUNT(CASE WHEN CAST(REPLACE(m.niveau_eau, ' m', '') AS REAL) > {point_bas} THEN 1 END) AS nbr_jours_sup_point_bas,
+                                COUNT(CASE WHEN CAST(REPLACE(m.niveau_eau, ' m', '') AS REAL) > ({point_bas}+0.10) THEN 1 END) AS nbr_jours_sup_point_bas_sup10cm
+                            FROM mesure m
+                            LEFT JOIN hauteur_eau h ON REPLACE(m.niveau_eau, ' m', '') = h.niveau_eau
+                            WHERE m.niveau_eau IS NOT NULL
+                            GROUP BY substr(m.date, 1, 4), substr(m.date, 6, 2)
+                            ORDER BY substr(m.date, 6, 2), substr(m.date, 1, 4);''')
 
             conn.commit()
             conn.close()
@@ -363,6 +365,7 @@ class CalculWidget(QDialog, form_traitement):
         try:
             cursor.execute('''
                                 CREATE TABLE IF NOT EXISTS donnees_periodiques(
+                                    annee INTEGER,
                                     periode STRING,
                                     moyenne_surface_eau_m2 REAL,
                                     moyenne_surface_eau_sup_10cm REAL,
@@ -413,6 +416,7 @@ class CalculWidget(QDialog, form_traitement):
             cursor.execute(f'''
                             INSERT INTO donnees_periodiques
                                     SELECT 
+                                        CAST(substr(m.date, 1, 4) AS INTEGER) AS annee,
                                             CASE 
                                                 WHEN (SUBSTRING(m.date, 6, 2) = '12' AND CAST(SUBSTRING(m.date, 9, 2) AS INTEGER) >= 16) 
                                                      OR SUBSTRING(m.date, 6, 2) IN ('01', '02') 
@@ -440,8 +444,8 @@ class CalculWidget(QDialog, form_traitement):
                                         FROM mesure m
                                         LEFT JOIN hauteur_eau h ON REPLACE(m.niveau_eau, ' m', '') = h.niveau_eau
                                         WHERE m.niveau_eau IS NOT NULL
-                                        GROUP BY periode
-                                        ORDER BY m.date''')
+                                        GROUP BY substr(m.date, 1, 4), periode
+                                        ORDER BY annee, periode;''')
 
             conn.commit()
             conn.close()
