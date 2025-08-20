@@ -11,7 +11,14 @@ from qgis import processing
 from qgis.core import QgsRasterLayer
 import os
 import json # import des librairies nécessaires à la lecture de données géospatiales
-import rasterio # import librairie manipulation raster
+# import librairie manipulation raster
+try :
+    import rasterio
+except ImportError :
+    import subprocess
+    import sys
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "rasterio"])
+    import rasterio
 from rasterio.transform import from_origin
 import numpy as np
 import subprocess
