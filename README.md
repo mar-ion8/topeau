@@ -51,7 +51,17 @@ Pour installer le Plugin depuis GitHub :
 								> déposer dossier topeau avec les autres dossiers plugins
 <br>
 4. si QGIS ouvert : fermer la fenêtre et relancer
+<br>
+5. Aller dans le Menu "Extensions" et sélectionner "Installer/Gérer les extensions" 
+> Taper "Top'Eau" dans la barre de recherche et cliquer sur "Installer"
 </p>
+
+## En cas de problème
+
+<p align="justify">Si l'extension ne se lance pas ou que QGIS renvoie une erreur :
+1. vérifier que l'utilisateur possède une version ultérieure à QGIS 3.30 (incompatibilité entre le code actuel et les codes Python des algorithmes QGIS issus des versions antérieures à la 3.30)
+2. l'entête des fichiers de code présente une installation des modules qui demandent à être installés dans un environnement Python. Malgré tout, il est possible que certains messages d'erreurs apparaissent, comme "module xxx could not be found / no module named xxx" (si le message d'erreur ne s'affiche pas dans une fenêtre QGIS, vérifier la console Python de QGIS). En ce sens, l'utilisateur est prié d'ouvrir OSGEO4W Shell (automatiquement installé avec QGIS) et d'écrire "-m pip install xxx"
+3. si d'autres problèmes apparaissent, ou que le Plugin ne fonctionne pas et que les messages d'erreur sont trop complexes à gérer pour l'utilisateur, contacter marion.bleuse8@gmail.com</p>
 
 ## Présentation du Plugin Top'Eau
 
