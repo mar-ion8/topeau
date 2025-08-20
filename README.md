@@ -179,20 +179,20 @@ Pour installer le Plugin depuis GitHub :
 
 <p align="justify"><strong>Méthode 1 : l'analyse temporelle est ponctuelle</strong> 
 <br>
-<img src="assets/img/bio1.png" alt="methode1_gestion_temporelle" width="250"/>
+<img src="assets/img/bio1.png" alt="methode1_gestion_temporelle" width="500"/>
 <br>
 Ce choix est réservé aux utilisateurs ayant des relevés ponctuels qu'ils désirent analyser. Le cas d'utilisation ayant servi à l'élaboration de cette étape et à la validation des données produites est celui de relevés terrain liés à l'écoute d'amphibiens. L'utilisateur avait pris sur le terrain des points correspondant à la localisation d'amphibiens, afin d'effectuer des recherches sur la possible corrélation entre l'habitat et la présence/absence de certaines espèces. L'utilisateur souhaitait poursuivre son analyse en cherchant à savoir si une corrélation entre la présence d'amphibiens et la hauteur d'eau dans un espace étudié pouvait être pointée. Ainsi, cette étape de l'analyse devait lui servir pour croiser les données terrain avec les données eau importées précédemment et les rasters créés dans le GeoPackage. Pour ce faire, la donnée en entrée devait <strong>contenir un champ renseignant la date du relevé, et ce dans un format date valide</strong>. C'est le nom de ce champ qui est demandé à l'utilisateur.
 <br>
-<img src="assets/img/champ_bio1.png" alt="methode1_champ_requete_date" width="250"/>
+<img src="assets/img/champ_bio1.png" alt="methode1_champ_requete_date" width="500"/>
 </p>
 
 <p align="justify"><strong>Méthode 2 : l'analyse temporelle est soumise à un intervalle</strong> 
 <br>
-<img src="assets/img/bio2.png" alt="methode2_gestion_temporelle" width="250"/>
+<img src="assets/img/bio2.png" alt="methode2_gestion_temporelle" width="500"/>
 <br>
 Ce choix est réservé aux utilisateurs ayant des relevés qu'ils désirent analyser. Le cas d'utilisation ayant servi à l'élaboration de cette étape et à la validation des données produites est celui de relevés terrain liés à l'analyse de communautés végétales sur des transects floraux. L'utilisateur avait pris sur le terrain des points correspondant à des quadrats, afin d'analyser la flore contenue dans ces quadrats pour chercher à établir ou réfuter une corrélation entre l'altimétrie, l'inondation ou l'assèchement du terrain et les espèces présentes au sein des communautés. Pour commencer, l'utilisateur désirait connaître le niveau d'eau hypothétique au sein de ses zones détude (alentours d'un transect floral) tout au long de l'année. Ainsi, cette étape de l'analyse devait lui servir pour croiser les données terrain avec les données eau importées précédemment et les rasters créés dans le GeoPackage. Pour ce faire, la donnée en entrée devait <strong>être confrontée à une intervalle (pouvant s'éaler sur plusieurs années)</strong> sélectionnée à même l'interface à l'aide du petit calendrier.
 <br>
-<img src="assets/img/interv_bio2.png" alt="methode2_intervalle_requete_date" width="250"/>
+<img src="assets/img/interv_bio2.png" alt="methode2_intervalle_requete_date" width="500"/>
 </p>
 
 #### Données en sortie
