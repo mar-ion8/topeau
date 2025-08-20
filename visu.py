@@ -10,7 +10,13 @@ from qgis import processing
 from qgis.core import QgsRasterLayer
 import os
 # import librairies nécessaires à la datavisualisation
-import seaborn as sns
+try :
+    import seaborn as sns
+except ImportError :
+    import subprocess
+    import sys
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "seaborn"])
+    import seaborn as sns
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
