@@ -60,7 +60,9 @@ Pour installer le Plugin depuis GitHub :
 
 <p align="justify">Si l'extension ne se lance pas ou que QGIS renvoie une erreur :
 1. vérifier que l'utilisateur possède une version ultérieure à QGIS 3.30 (incompatibilité entre le code actuel et les codes Python des algorithmes QGIS issus des versions antérieures à la 3.30)
+<br>
 2. l'entête des fichiers de code présente une installation des modules qui demandent à être installés dans un environnement Python. Malgré tout, il est possible que certains messages d'erreurs apparaissent, comme "module xxx could not be found / no module named xxx" (si le message d'erreur ne s'affiche pas dans une fenêtre QGIS, vérifier la console Python de QGIS). En ce sens, l'utilisateur est prié d'ouvrir OSGEO4W Shell (automatiquement installé avec QGIS) et d'écrire "-m pip install xxx"
+<br>
 3. si d'autres problèmes apparaissent, ou que le Plugin ne fonctionne pas et que les messages d'erreur sont trop complexes à gérer pour l'utilisateur, contacter marion.bleuse8@gmail.com</p>
 
 ## Présentation du Plugin Top'Eau
@@ -167,11 +169,27 @@ Pour installer le Plugin depuis GitHub :
 
 ### Analyse biodiversité
 
-<p align="justify"><font color='#16537e'>Métiers concernés :</font> gestion de la biodiversité, ingénieur biodiversité, </p>
+<p align="justify"><font color='#16537e'>Métiers concernés :</font> gestion de la biodiversité, ingénieur biodiversité, ingénieur d'études, ingénieur de recherches </p>
 
 #### Données en entrée
 
+<p align="justify"> Comme l'indique l'interface graphique de la partie "Analyse biodiversité", la donnée en entrée doit être un fichier vecteur de type "point" (ou "poncutel"). Celle-ci se doit d'être référencée dans le bon système de coordonnées (celui utilisé par le reste des algorithmes du Plugin est le Lambert 93 [2154]). Selon la méthode utilisée pour la temporalité, la table attributaire se doit d'être complétée.</p>
 
+<p align="justify"><strong>L'utilisateur est prié de cocher une des deux options, sous peine de dysfonctionnement de l'algorithme</strong> 
+
+<p align="justify"><strong>Méthode 1 : l'analyse temporelle est ponctuelle</strong> 
+<img src="assets/img/bio1.png" alt="methode1_gestion_temporelle"/>
+<br>
+Ce choix est réservé aux utilisateurs ayant des relevés ponctuels qu'ils désirent analyser. Le cas d'utilisation ayant servi à l'élaboration de cette étape et à la validation des données produites est celui de relevés terrain liés à l'écoute d'amphibiens. L'utilisateur avait pris sur le terrain des points correspondant à la localisation d'amphibiens, afin d'effectuer des recherches sur la possible corrélation entre l'habitat et la présence/absence de certaines espèces. L'utilisateur souhaitait poursuivre son analyse en cherchant à savoir si une corrélation entre la présence d'amphibiens et la hauteur d'eau dans un espace étudié pouvait être pointée. Ainsi, cette étape de l'analyse devait lui servir pour croiser les données terrain avec les données eau importées précédemment et les rasters créés dans le GeoPackage. Pour ce faire, la donnée en entrée devait <strong>contenir un champ renseignant la date du relevé, et ce dans un format date valide</strong>. C'est le nom de ce champ qui est demandé à l'utilisateur.
+<img src="assets/img/champ_bio1.png" alt="methode1_champ_requete_date"/>
+</p>
+
+<p align="justify"><strong>Méthode 2 : l'analyse temporelle est soumise à un intervalle</strong> 
+<img src="assets/img/bio2.png" alt="methode2_gestion_temporelle"/>
+<br>
+Ce choix est réservé aux utilisateurs ayant des relevés qu'ils désirent analyser. Le cas d'utilisation ayant servi à l'élaboration de cette étape et à la validation des données produites est celui de relevés terrain liés à l'analyse de communautés végétales sur des transects floraux. L'utilisateur avait pris sur le terrain des points correspondant à des quadrats, afin d'analyser la flore contenue dans ces quadrats pour chercher à établir ou réfuter une corrélation entre l'altimétrie, l'inondation ou l'assèchement du terrain et les espèces présentes au sein des communautés. Pour commencer, l'utilisateur désirait connaître le niveau d'eau hypothétique au sein de ses zones détude (alentours d'un transect floral) tout au long de l'année. Ainsi, cette étape de l'analyse devait lui servir pour croiser les données terrain avec les données eau importées précédemment et les rasters créés dans le GeoPackage. Pour ce faire, la donnée en entrée devait <strong>être confrontée à une intervalle (pouvant s'éaler sur plusieurs années)</strong> sélectionnée à même l'interface à l'aide du petit calendrier.
+<img src="assets/img/interv_bio2.png" alt="methode2_intervalle_requete_date"/>
+</p>
 
 #### Données en sortie
 
