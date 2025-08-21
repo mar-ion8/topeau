@@ -220,10 +220,10 @@ Ce choix est réservé aux utilisateurs ayant des relevés qu'ils désirent anal
 | hiver               |16 décembre - 15 mars|
 | printemps           |16 mars - 31 mai|
 
-La plupart des indicateurs reposent sur le point bas, qui correspond au premier décile des valeurs altimétriques de la zone d'étude. Les valeurs récupérées et calculées sont les suivantes :
-
 -> Pour les calculs journaliers
 
+|Nom du champ        | Valeur calculée/récupérée     |
+|--------------------|------------|
 | niveau_eau         | niveau récupérée depuis la table mesure précédemment implémentée |
 | point_bas          | premier décile récupéré depuis la table zone_etude créée lors de la première étape |
 | surface            | surface inondée de la zone d'étude récupérée en fonction du niveau d'eau depuis la table hauteur_eau |
