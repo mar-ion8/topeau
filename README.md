@@ -175,7 +175,9 @@ Pour installer le Plugin depuis GitHub :
 
 <p align="justify"> Comme l'indique l'interface graphique de la partie "Analyse biodiversité", la donnée en entrée doit être un fichier vecteur de type "point" (ou "poncutel"). Celle-ci se doit d'être référencée dans le bon système de coordonnées (celui utilisé par le reste des algorithmes du Plugin est le Lambert 93 [2154]). Selon la méthode utilisée pour la temporalité, la table attributaire se doit d'être complétée.</p>
 
-<p align="justify"><strong>L'utilisateur est prié de cocher une des deux options, sous peine de dysfonctionnement de l'algorithme</strong> 
+
+<p align="center"><strong>L'utilisateur est prié de cocher une des deux options, sous peine de dysfonctionnement de l'algorithme</strong> 
+
 
 <p align="justify"><strong>Méthode 1 : l'analyse temporelle est ponctuelle</strong> 
 <br>
@@ -190,12 +192,13 @@ Ce choix est réservé aux utilisateurs ayant des relevés ponctuels qu'ils dés
 <br>
 <img src="assets/img/bio2.png" alt="methode2_gestion_temporelle" width="500"/>
 <br>
-Ce choix est réservé aux utilisateurs ayant des relevés qu'ils désirent analyser. Le cas d'utilisation ayant servi à l'élaboration de cette étape et à la validation des données produites est celui de relevés terrain liés à l'analyse de communautés végétales sur des transects floraux. L'utilisateur avait pris sur le terrain des points correspondant à des quadrats, afin d'analyser la flore contenue dans ces quadrats pour chercher à établir ou réfuter une corrélation entre l'altimétrie, l'inondation ou l'assèchement du terrain et les espèces présentes au sein des communautés. Pour commencer, l'utilisateur désirait connaître le niveau d'eau hypothétique au sein de ses zones détude (alentours d'un transect floral) tout au long de l'année. Ainsi, cette étape de l'analyse devait lui servir pour croiser les données terrain avec les données eau importées précédemment et les rasters créés dans le GeoPackage. Pour ce faire, la donnée en entrée devait <strong>être confrontée à une intervalle (pouvant s'éaler sur plusieurs années)</strong> sélectionnée à même l'interface à l'aide du petit calendrier.
+Ce choix est réservé aux utilisateurs ayant des relevés qu'ils désirent analyser. Le cas d'utilisation ayant servi à l'élaboration de cette étape et à la validation des données produites est celui de relevés terrain liés à l'analyse de communautés végétales sur des transects floraux. L'utilisateur avait pris sur le terrain des points correspondant à des quadrats, afin d'analyser la flore contenue dans ces quadrats pour chercher à établir ou réfuter une corrélation entre l'altimétrie, l'inondation ou l'assèchement du terrain et les espèces présentes au sein des communautés. Pour commencer, l'utilisateur désirait connaître le niveau d'eau hypothétique au sein de ses zones détude (alentours d'un transect floral) tout au long de l'année. Ainsi, cette étape de l'analyse devait lui servir pour croiser les données terrain avec les données eau importées précédemment et les rasters créés dans le GeoPackage. Pour ce faire, la donnée en entrée devait <strong>être confrontée à un intervalle (pouvant s'éaler sur plusieurs années)</strong> sélectionné à même l'interface à l'aide du petit calendrier.
 <br>
 <img src="assets/img/interv_bio2.png" alt="methode2_intervalle_requete_date" width="500"/>
 </p>
 
 #### Données en sortie
+
 
 
 ### Indicateurs et variables hydriques
@@ -204,9 +207,30 @@ Ce choix est réservé aux utilisateurs ayant des relevés qu'ils désirent anal
 
 #### Données en entrée
 
-
+<p align="justify">La seule donnée en entrée demandée à l'utilisateur est le GeoPackage précédemment créé et duquel la table "mesure" a été implémentée avec les données eau. Les calculs s'effectueront sur les dates données par l'utilisateur : l'algorithme ne saurait combler les jours où les relevés sont nuls (pouvant aboutir à des calculs nuls s'il y a un trop grand nombre de données nulles par mois ou par période). Malgré tout, l'algorithme se charge d'analyser la date compris dans le champ date, et effectue ainsi les calculs par année. L'utilisateur peut ainsi fournir une table mesure complétée avec des données étalées sur plusieurs années sans problème.</p>
 
 #### Données en sortie
+
+<p align="justify">En sortie, l'utilisateur trouve le GeoPackage complété par les tables correspondantes aux calculs effectués. Les tables sont : donnees_journalieres, donnees_mensuelles, donnees_periodiques. Les champs de ces tables ont été décidés par <strong>Lilia Mzali</strong>. Ces calculs correspondent à des indicateurs érigés autour de la gestion de l'eau par <strong>Lilia Mzali</strong> et <strong>Olivier Gore</strong>. De même, les périodes ont été établies par <strong>Olivier Gore</strong>. </p>
+
+|Période             | Durée      |
+|--------------------|------------|
+| été                 |1 juin - 30 septembre|
+| automne             |1 octobre - 16 décembre|
+| hiver               |16 décembre - 15 mars|
+| printemps           |16 mars - 31 mai|
+
+La plupart des indicateurs reposent sur le point bas, qui correspond au premier décile des valeurs altimétriques de la zone d'étude. Les valeurs récupérées et calculées sont les suivantes :
+
+-> Pour les calculs journaliers
+
+| niveau_eau         | niveau récupérée depuis la table mesure précédemment implémentée |
+| point_bas          | premier décile récupéré depuis la table zone_etude créée lors de la première étape |
+| surface            | surface inondée de la zone d'étude récupérée en fonction du niveau d'eau depuis la table hauteur_eau |
+| surface_sup_10cm   | surface inondée de la zone d'étude récupérée en fonction du niveau d'eau  et de l'addition des surfaces des classes 3 à 7 depuis la table hauteur_eau  |
+| stress_hydrique    | niveau_eau - (point_bas - 0,42) (indicateur soumis par Olivier Gore)|
+| stress_inondation  | niveau_eau - point_bas |
+
 
 ### Aspect technique
 
