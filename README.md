@@ -22,6 +22,9 @@
     - [Langages](#langages)
     - [Arborescence et fichiers de code](#arborescence-et-fichiers-de-code)
     - [Modules Python](#modules-python)
+	- [Fichiers PY (Fichiers de code, algorithmes)](#fichiers-py-fichiers-de-code-algorithmes)
+	- [Fichiers UI (Interfaces QT)](#fichiers-ui-interfaces-qt)
+	- [Fichiers QML (Fichiers de style)](#fichiers-qml-fichiers-de-style)
 - [Annexes](#annexes)
   - [Collaborateurs](#collaborateurs)
   - [Sources](#sources)
@@ -264,7 +267,20 @@ Ce choix est réservé aux utilisateurs ayant des relevés qu'ils désirent anal
 | geopandas          | Ce module permet l'utilisation et la manipulation de données géospatiales |
 | webbrowser         | Ce module permet l'insertion de liens hypertextes pour accèder à des sites web |
 
+#### Fichier PY (Fichiers de code, algorithmes)
 
+#### Fichiers UI (Interfaces QT)
+
+<p align="justify">Les interfaces ont été réalisées sur QtDesigner, outil installé en local automatiquement lors de l'installation de QGIS (au même titre que OSGEO4W Shell par exemple). L'interface permet d'agencer les éléments entre eux assez facilement, et surtout de les renommer pour pouvoir les utiliser plus facilement dans les fichiers de code. En effet, les fichiers .ui sont connectés aux fichiers .py, pour permettre l'interaction entre les interfaces et les algorithmes.
+<br>
+Les interfaces ont été construites afin d'être les plus intuitives possibles pour l'utilisateur et <i>responsive</i>, donc adaptées aux différentes tailles d'écran, et pouvant être réduites ou élargies. Pour s'assurer de la lisibilité des interfaces et de leur efficacité pour l'utilsiateur, des contrôles ont été effectués par des futurs utilsiateurs du Plugin et par des utilisateurs de QGIS non liés à l'élaboration du Plugin. Pour être <i>responsive</i>, les interfaces ont dû être construites dans des formulaires de grille. L'agencement des éléments est ainsi contraint à des emplacements prédéfinis.
+<br>
+<img src="assets/img/form_qt.png" alt="creation_formulaire_grille" />
+</p>
+
+#### Fichiers QML (Fichiers de style)
+
+<p align="justify">Pour ce qui est des fichiers de style, ils ont été réalisés sur QGIS en travaillant avec les couches raster, selon des classes définies par <strong>Lilia Mzali</strong> et une palette de couleurs définies par <strong>Julien Ancelin</strong> et vecteur, en suivant les symbologies déjà utilisées par l'Unité Expérimentale de Saint-Laurent-de-la-Prée pour les délimitations de zone d'étude et une symbologie permettant de bien visualiser les MultiPolygon malgré leur superposition pour les hauteurs d'eau. Ce sont des fichiers QML implémentés dans le GeoPackage par défaut au sein du code et pouvant être récupérés/modifiés depuis le dossier "style".</p>
 
 ## Annexes
 
