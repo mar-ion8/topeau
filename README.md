@@ -91,7 +91,7 @@ Pour installer le Plugin depuis GitHub :
 
 ### Structuration du Plugin
 
-<p align="justify">Le Plugin a été pensé selon une logique de séparation des étapes de l'analyse et des besoins des utilisateurs en interfaces. Ainsi, deux étapes sont nécessaires avant l'analyse et le calcul d'indicateurs : la création d'une base de données SQLite au format GPKG  </p>
+<p align="justify">Le Plugin a été pensé selon une logique de séparation des étapes de l'analyse et des besoins des utilisateurs en interfaces. Ainsi, deux étapes sont nécessaires avant l'analyse et le calcul d'indicateurs : la création d'une base de données SQLite au format GPKG et l'import des données terrain à analyser. </p>
 
 ## Utilisation
 
@@ -292,7 +292,25 @@ Les interfaces ont été construites afin d'être les plus intuitives possibles 
 
 ### Sources 
 
+#### Construction du Plugin
+
+<p align="justify">La grande majorité des notions Python et les connaissances de base à avoir pour commencer à coder un Plugin QGIS m'ont été enseignées par <strong>Julien Hubert</strong> dans le cadre de la LUPSIG.</p>
+
 #### Sitographie
+
+<p align="justify"><strong>Calcul des déciles en Python :</strong>  https://statorials.org/deciles-en-python/ </p>
+
+<p align="justify"><strong>Création/gestion du GeoPackage :</strong>  https://gdal.org/en/stable/drivers/raster/gpkg.html </p>
+
+<p align="justify"><strong>Gestion du style du GeoPackage :</strong>  https://docs.qgis.org/3.34/fr/docs/user_manual/introduction/general_tools.html#layer-definition-file - https://docs.qgis.org/3.34/fr/docs/user_manual/managing_data_source/supported_data.html#id14</p>
+
+<p align="justify"><strong>Gestion du SQLite avec Python :</strong>  https://www.expertpython.fr/post/tutoriel-cr%C3%A9er-simplement-une-base-de-donn%C3%A9es-sqlite-avec-python - https://fabloch.github.io/fr/tutos/code/python/sqlite</p>
+
+<p align="justify"><strong>Gestion du format date en Python :</strong> https://docs.python.org/fr/3.6/library/datetime.html</p>
+
+<p align="justify"><strong>Utilisation de QT Designer :</strong> https://doc.qt.io/qt-6/qtdesigner-manual.html </p>
+
+<p align="justify"><strong>Utilisation du module pandas :</strong> https://pandas.pydata.org/docs/user_guide/index.html</p>
 
 
 #### Rôle de l'IA
@@ -300,4 +318,3 @@ Les interfaces ont été construites afin d'être les plus intuitives possibles 
 <p align="justify"> L’IA a majoritairement été utilisée pour structurer logiquement en Python des morceaux de code que j’écrivais et/ou que je récupérais sur Internet/QGIS et pour déchiffrer des erreurs. En effet, je n’avais jamais codé en Python avant octobre 2024 et je n’ai fait qu’un Plugin avant celui-ci, lequel était de complexité moindre par rapport à celui exploré ici. Pour ce qui est de la génération de code, je dirais que l’IA a servi à 50%, et pour ce qui est de la gestion des erreurs, je dirais que l’IA a servi à 75 voire 80%. </p>
 
 <p align="justify">L’IA utilisée était celle proposée par Julien Ancelin lors de la mise en place des premiers fichiers de code du Plugin ; Claude. Claude.ai est un modèle de langage par intelligence artificielle développé par Anthropic, et il est le plus efficace pour la génération et la correction de bugs en Python. Lors d’une requête, Claude génère sa réponse sous deux panneaux, ce qui le rend effectivement plutôt efficace : un panneau est dédié à la réponse directe de l’IA (explication des bugs/des fonctions générées, étapes à suivre pour résoudre les problèmes/créer des fonctions/agencer des lignes de code…) et un panneau dédié à la génération du code commenté. En ce sens, il m’était souvent utile de fournir l’erreur à Claude, d’attendre sa réponse et de ne regarder que le panneau de réponse, pour comprendre mes erreurs, essayer de les résoudre par moi-même et ne pas trop modifier le code. En effet, l’un des désavantages de l’utilisation de l’IA pour la génération et la correction de codes Python se situe dans la complexité et la longueur non nécessaires des codes fournis par l’IA. Souvent, des fonctions inutiles voire incompatibles avec le reste du code, ou apportant un résultat différent de celui demandé, étaient générées, et il devenait vite nécessaire de bien faire attention à la forme que prenait le code. </p>
-
