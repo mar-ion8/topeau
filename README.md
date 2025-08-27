@@ -12,12 +12,15 @@
     - [Données et variables en entrée](#données-et-variables-en-entrée)
     - [Données en sortie](#données-en-sortie)
 	- [Avertissement](#avertissement)
-  - [Analyse biodiversité](#analyse-biodiversité)
-    - [Données en entrée](#données-en-entrée)
+  - [Import de données eau à la base de données SQLite](#import-de-données-eau-à-la-base-de-données-sqlite)
+    - [Données et variables en entrée](#données-et-variables-en-entrée)
     - [Données en sortie](#données-en-sortie-1)
-  - [Indicateurs et variables hydriques](#indicateurs-et-variables-hydriques)
+  - [Analyse biodiversité](#analyse-biodiversité)
     - [Données en entrée](#données-en-entrée-1)
     - [Données en sortie](#données-en-sortie-2)
+  - [Indicateurs et variables hydriques](#indicateurs-et-variables-hydriques)
+    - [Données en entrée](#données-en-entrée-2)
+    - [Données en sortie](#données-en-sortie-3)
   - [Aspect technique](#aspect-technique)
     - [Langages](#langages)
     - [Arborescence et fichiers de code](#arborescence-et-fichiers-de-code)
@@ -27,6 +30,7 @@
 	- [Fichiers QML (Fichiers de style)](#fichiers-qml-fichiers-de-style)
 - [Annexes](#annexes)
   - [Collaborateurs](#collaborateurs)
+  - [Construction du Plugin](#construction-du-plugin)
   - [Sources](#sources)
     - [Sitographie](#sitographie)
     - [Rôle de l'IA](#rôle-de-lia)
@@ -173,11 +177,11 @@ Pour installer le Plugin depuis GitHub :
 #### Données en entrée
 
 <p align="justify">En entrée, les données requises sont :
-<ul> le GPKG créé précédemment 
+<li> le GPKG créé précédemment 
 <br>
 <img src="assets/img/gpkg_import.png" alt="import_gpkg_pour_import_donnees_eau" width="500"/>
-</ul>
-<ul> un fichier .csv contenant les relevés eau 
+</li>
+<li> un fichier .csv contenant les relevés eau 
 <br>
 <img src="assets/img/import_csv.png" alt="import_fichier_contenant_les_donnees_eau" width="500"/>
 L'interface permet à l'utilisateur de renseigner les champs contenant les informations demandées : 
@@ -189,13 +193,16 @@ L'interface permet à l'utilisateur de renseigner les champs contenant les infor
 2. le champ contenant le relevé (renseigné avec l'exact même nom)
 <br>
 <img src="assets/img/champ_date.png" alt="renseignement_champ_date" width="300"/>
-</ul>
+</li>
 <strong>L'utilisateur est prié de sélectionner un fichier dont le champ renseignant la date est au format date.</strong>
 </p>
 
 #### Données en sortie
 
-
+<p align="justify">La seule donnée en sortie est le GPKG initial dont la table "mesure" a été complétée par les relevés fournis.
+<br>
+NB : la table peut ne pas être complétée ou peut afficher des valeurs nulles ou vides si : le format date n'est pas valide, le champ renseignant le relevé eau n'a pas été correctement orthographié, ou que le fichier de base contient des valeurs nulles.
+</p>
 
 ### Analyse biodiversité
 
