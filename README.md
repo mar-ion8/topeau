@@ -202,7 +202,21 @@ Ce choix est réservé aux utilisateurs ayant des relevés qu'ils désirent anal
 
 #### Données en sortie
 
+<p align="justify">Peu importe la méthode sélectionnée, la donnée produite par l'algorithme est une couche vecteur ponctuelle <strong>temporaire</strong> ajoutée au projet QGIS en cours et nommée par l'utilisateur.
+<br>
+<img src="assets/img/nom_couche.png" alt="nom_couche_ponctuelle_temp" width="500"/>
+<br>
+<strong>S'il veut enregistrer en local sa donnée, l'utilisateur est prié de sélectionner "Exporter > Sauvegarder l'entité sous..." en effectuant un clic droit sur la couche, ce qui le rend libre de choisir l'emplacement et le format.</strong>
+</p>
 
+<p align="justify">Dans les deux cas, la couche produite reprend les champs de la couche d'entrée, et les valeurs qui leur sont associées. Les champs ajoutés sont les suivants : </p>
+
+|Champ ajouté        | Signification      |
+|--------------------|------------|
+| lame_eau           |Soustraction entre le niveau d'eau relevé sur le terrain à la date du relevé biodiversité et la hauteur du terrain pour connaître la lame d'eau (en cm) sous l'individu écouté/dans le quadrat/etc...|
+| niveau_eau_cm      |Niveau d'eau relevé sur le terrain et associé à la date du relevé biodiversité dans la table "mesure" converti en cm|
+
+<p align="justify">Pour la couche issue de la méthode 1, il y a autant d'entités à id unique que dans la couche vecteur d'origine , et pour la couche issues de la méthode 2, il y a autant d'entités à id unique qu'il y a de d'entités dans la couche vecteur d'origine multipliées par le nombre de jours compris dans l'intervalle fournis (exemple : si la couche vecteur d'origine contient 10 points et que l'intervalle tient sur un mois de 30 jours, il y aura dans la couche finale 300 lignes à id unique). </p>
 
 ### Indicateurs et variables hydriques
 
@@ -302,7 +316,7 @@ Les interfaces ont été construites afin d'être les plus intuitives possibles 
 
 <p align="justify"><strong>Création/gestion du GeoPackage :</strong>  https://gdal.org/en/stable/drivers/raster/gpkg.html </p>
 
-<p align="justify"><strong>Gestion du style du GeoPackage :</strong>  https://docs.qgis.org/3.34/fr/docs/user_manual/introduction/general_tools.html#layer-definition-file - https://docs.qgis.org/3.34/fr/docs/user_manual/managing_data_source/supported_data.html#id14</p>
+<p align="justify"><strong>Gestion du style du GeoPackage :</strong>   https://docs.qgis.org/3.34/fr/docs/user_manual/introduction/general_tools.html#layer-definition-file - https://docs.qgis.org/3.34/fr/docs/user_manual/managing_data_source/supported_data.html#id14</p>
 
 <p align="justify"><strong>Gestion du SQLite avec Python :</strong>  https://www.expertpython.fr/post/tutoriel-cr%C3%A9er-simplement-une-base-de-donn%C3%A9es-sqlite-avec-python - https://fabloch.github.io/fr/tutos/code/python/sqlite</p>
 
