@@ -13,7 +13,7 @@
     - [Données en sortie](#données-en-sortie)
 	- [Avertissement](#avertissement)
   - [Import de données eau à la base de données SQLite](#import-de-données-eau-à-la-base-de-données-sqlite)
-    - [Données et variables en entrée](#données-et-variables-en-entrée)
+    - [Données en entrée](#données-en-entrée)
     - [Données en sortie](#données-en-sortie-1)
   - [Analyse biodiversité](#analyse-biodiversité)
     - [Données en entrée](#données-en-entrée-1)
@@ -327,6 +327,7 @@ Ce choix est réservé aux utilisateurs ayant des relevés qu'ils désirent anal
 | Module             | Utilisation       |
 |--------------------|-------------------|
 | os                 |“Ce module fournit une façon portable d'utiliser les fonctionnalités dépendantes du système d'exploitation.” (https://docs.python.org) |
+| osgeo      | Ce module permet l'accès aux librairies de traitement de données géospatiales comme GDAL ou GRASS |
 | json               | Ce module offre la possibilité de manipuler, lire et encoder des données de type JSON |
 | datetime           | “Ce module met à disposition des fonctions pour manipuler des dates et des heures. [...] l’efficacité de l’import de ce module est due au formatage et à la manipulation des données résultats” (https://docs.python.org) |
 | numpy              | Ce module offre la possibilité de calculer les statistiques (déciles, médiane…) qui n’étaient pas calculées à partir des algorithmes natifs de QGIS |
@@ -335,6 +336,9 @@ Ce choix est réservé aux utilisateurs ayant des relevés qu'ils désirent anal
 | pandas             | Ce module permet l'utilisation et la manipulation de données |
 | geopandas          | Ce module permet l'utilisation et la manipulation de données géospatiales |
 | webbrowser         | Ce module permet l'insertion de liens hypertextes pour accèder à des sites web |
+| seaborn         | Ce module permet l'accès à des fonctions de visualisation de données (dont la création de graphiques complexes) |
+| matplotlib      | Ce module permet l'accès à des fonctions de visualisation de données (dont la création de graphiques) |
+| math      | Ce module donne accès à un grand nombre de fonctions et variables mathématiques permettant de réaliser un grand nombre de calculs mathématiques |
 
 #### Fichier PY (Fichiers de code, algorithmes)
 
