@@ -228,7 +228,7 @@ Ce choix est réservé aux utilisateurs ayant des relevés qu'ils désirent anal
 
 #### Données en sortie
 
-<p align="justify">En sortie, l'utilisateur trouve le GeoPackage complété par les tables correspondantes aux calculs effectués. Les tables sont : donnees_journalieres, donnees_mensuelles, donnees_periodiques. Les champs de ces tables ont été décidés par <strong>Lilia Mzali</strong>. Ces calculs correspondent à des indicateurs érigés autour de la gestion de l'eau par <strong>Lilia Mzali</strong> et <strong>Olivier Gore</strong>. De même, les périodes ont été établies par <strong>Olivier Gore</strong>. </p>
+<p align="justify">En sortie, l'utilisateur trouve le GeoPackage complété par les tables correspondantes aux calculs effectués. Les tables sont : donnees_journalieres, donnees_mensuelles, donnees_periodiques. Ces couches sont d'ailleurs ajoutées automatiquement au projet QGIS en cours dans un groupe dédié (Top'Eau - Indicateurs calculés). Les champs de ces tables ont été décidés par <strong>Lilia Mzali</strong>. Ces calculs correspondent à des indicateurs érigés autour de la gestion de l'eau par <strong>Lilia Mzali</strong> et <strong>Olivier Gore</strong>. De même, les périodes ont été établies par <strong>Olivier Gore</strong>. </p>
 
 |Période             | Durée      |
 |--------------------|------------|
@@ -243,10 +243,31 @@ Ce choix est réservé aux utilisateurs ayant des relevés qu'ils désirent anal
 |--------------------|------------|
 | niveau_eau         | niveau récupérée depuis la table mesure précédemment implémentée |
 | point_bas          | premier décile récupéré depuis la table zone_etude créée lors de la première étape |
-| surface            | surface inondée de la zone d'étude récupérée en fonction du niveau d'eau depuis la table hauteur_eau |
-| surface_sup_10cm   | surface inondée de la zone d'étude récupérée en fonction du niveau d'eau  et de l'addition des surfaces des classes 3 à 7 depuis la table hauteur_eau  |
+| surface_en_eau     | surface inondée de la zone d'étude récupérée en fonction du niveau d'eau depuis la table hauteur_eau, en m² |
+| surface_sup_10cm   | surface inondée de la zone d'étude récupérée en fonction du niveau d'eau et de l'addition des surfaces des classes 3 à 7 depuis la table hauteur_eau, en m²  |
 | stress_hydrique    | niveau_eau - (point_bas - 0,42) (indicateur soumis par Olivier Gore)|
 | stress_inondation  | niveau_eau - point_bas |
+| pourcentage_inondation  | division de la surface inondée de la zone d'étude en fonction du niveau d'eau (récupérée depuis surface_en_eau) par la surface totale de la zone d'étude (récupérée depuis la zone_etude), dont le résultat est multiplié par 100 pour obtenir un pourcentage |
+| pourcentage_inondation_sup_10cm | division de la surface inondée de la zone d'étude en fonction du niveau d'eau (récupérée depuis surface_sup_10cm) par la surface totale de la zone d'étude (récupérée depuis la zone_etude), dont le résultat est multiplié par 100 pour obtenir un pourcentage  |
+
+-> Pour les calculs mensuels
+
+|Nom du champ        | Valeur calculée/récupérée     |
+|--------------------|------------|
+| annee              | valeur récupérée à l'emplacement de l'année dans le champ date des relevés implémentés dans la table mesure |
+| mois               | valeur récupérée à l'emplacement du mois dans le champ date des relevés implémentés dans la table mesure, passée en nom des mois (01 -> janvier) |
+| moyenne_surface_eau_m2  | moyenne de toutes les valeurs quotidiennes comprises dans le mois correspondant à la surface inondée de la zone d'étude en fonction du niveau d'eau, en m² |
+| moyenne_surface_eau_m2  | moyenne de toutes les valeurs quotidiennes comprises dans le mois correspondant à la surface inondée de la zone d'étude en fonction du niveau d'eau et de l'addition des surfaces des classes 3 à 7, en m² |
+| stress_hydrique    | moyenne mensuelle calculée selon les niveaux d'eau compris dans le mois : niveau_eau - (point_bas - 0,42) (indicateur soumis par Olivier Gore)|
+| stress_inondation  | moyenne mensuelle calculée selon les niveaux d'eau compris dans le mois : niveau_eau - point_bas |
+| pourcentage_inondation  | moyenne mensuelle de la division de la surface inondée de la zone d'étude en fonction des niveaux d'eau relevés dans le mois par la surface totale de la zone d'étude (récupérée depuis la zone_etude), dont le résultat est multiplié par 100 pour obtenir un pourcentage |
+| pourcentage_inondation_sup_10cm | moyenne mensuelle de la division de la surface inondée de la zone d'étude en fonction des niveaux d'eau relevés dans le mois et des classes 3 à 7 par la surface totale de la zone d'étude (récupérée depuis la zone_etude), dont le résultat est multiplié par 100 pour obtenir un pourcentage  |
+| nbr_jours_sup_point_bas | comptage des jours dans le mois lors desquels le niveau d'eau relevé est supérieur au point bas |
+| nbr_jours_sup_point_bas_sup_10cm | comptage des jours dans le mois lors desquels le niveau d'eau relevé est supérieur au point bas auquel 10 cm ont été ajoutés|
+
+-> Pour les calculs périodiques
+
+<p align="justify">Les valeurs sont les mêmes que celles calculées/récupérées pour la table de données mensuelles, mais les moyennes et comptages sont effectués en fonction des périodes définies précédemment et non des mois.</p>
 
 
 ### Aspect technique
