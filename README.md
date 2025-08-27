@@ -173,22 +173,23 @@ Pour installer le Plugin depuis GitHub :
 #### Données en entrée
 
 <p align="justify">En entrée, les données requises sont :
-<li> le GPKG créé précédemment 
+<ul> le GPKG créé précédemment 
 <br>
 <img src="assets/img/gpkg_import.png" alt="import_gpkg_pour_import_donnees_eau" width="500"/>
-</li>
-<li> un fichier .csv contenant les relevés eau 
+</ul>
+<ul> un fichier .csv contenant les relevés eau 
+<br>
 <img src="assets/img/import_csv.png" alt="import_fichier_contenant_les_donnees_eau" width="500"/>
 L'interface permet à l'utilisateur de renseigner les champs contenant les informations demandées : 
 <br>
 1. le champ contenant la date du relevé
 <br>
-<img src="assets/img/champ_releve.png" alt="renseignement_champ_releve_eau" width="500"/>
+<img src="assets/img/champ_releve.png" alt="renseignement_champ_releve_eau" width="300"/>
 <br>
 2. le champ contenant le relevé (renseigné avec l'exact même nom)
 <br>
-<img src="assets/img/champ_date.png" alt="renseignement_champ_date" width="500"/>
-</li>
+<img src="assets/img/champ_date.png" alt="renseignement_champ_date" width="300"/>
+</ul>
 <strong>L'utilisateur est prié de sélectionner un fichier dont le champ renseignant la date est au format date.</strong>
 </p>
 
