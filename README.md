@@ -164,11 +164,37 @@ Pour installer le Plugin depuis GitHub :
 	</tr>
 </table>
 
-
-
 #### Avertissement
 
 <p align="justify"> Il est vraiment important de noter qu'il s'agit là d'une estimation produite en fonction de la donnée altimétrique. Si celle-ci a des défaillances ou des erreurs de correspondance avec le terrain, l'algorithme ne saurait en être tenu responsable. De même, dans le cadre des marais, la donnée produite à partir du Plugin n'est pas en mesure de prendre en compte les connexions ou déconnexions entre les parcelles et les fossés. </p>
+
+### Import de données eau à la base de données SQLite
+
+#### Données en entrée
+
+<p align="justify">En entrée, les données requises sont :
+<li> le GPKG créé précédemment 
+<br>
+<img src="assets/img/gpkg_import.png" alt="import_gpkg_pour_import_donnees_eau" width="500"/>
+</li>
+<li> un fichier .csv contenant les relevés eau 
+<img src="assets/img/import_csv.png" alt="import_fichier_contenant_les_donnees_eau" width="500"/>
+L'interface permet à l'utilisateur de renseigner les champs contenant les informations demandées : 
+<br>
+1. le champ contenant la date du relevé
+<br>
+<img src="assets/img/champ_releve.png" alt="renseignement_champ_releve_eau" width="500"/>
+<br>
+2. le champ contenant le relevé (renseigné avec l'exact même nom)
+<br>
+<img src="assets/img/champ_date.png" alt="renseignement_champ_date" width="500"/>
+</li>
+<strong>L'utilisateur est prié de sélectionner un fichier dont le champ renseignant la date est au format date.</strong>
+</p>
+
+#### Données en sortie
+
+
 
 ### Analyse biodiversité
 
