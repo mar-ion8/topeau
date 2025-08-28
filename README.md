@@ -182,9 +182,11 @@ Pour installer le Plugin depuis GitHub :
 
 <p align="justify">NB : pour avoir des données à visualiser, l'algorithme a besoin que l'utilisateur ait déjà généré un GPKG et qu'il n'ait pas quitté l'interface de création du GPKG. La visualisation ne peut s'effectuer que sur les données produites lors de l'analyse raster. </p>
 
-1. <img src="assets/img/bouton_visu.png" alt="bouton_acces_visualisation_data" width="500"/>
+1. 
+<img src="assets/img/bouton_visu.png" alt="bouton_acces_visualisation_data" width="500"/>
 
-2. <img src="assets/img/deciles.png" alt="visualisation_deciles" width="500"/>
+2. 
+<img src="assets/img/deciles.png" alt="visualisation_deciles" width="500"/>
 <img src="assets/img/surfaces.png" alt="visualisation_surfaces" width="500"/>
 <img src="assets/img/surfaces_sup10.png" alt="visualisation_surfaces_sup10cm" width="500"/>
 
