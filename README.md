@@ -95,7 +95,11 @@ Pour installer le Plugin depuis GitHub :
 
 ### Structuration du Plugin
 
-<p align="justify">Le Plugin a été pensé selon une logique de séparation des étapes de l'analyse et des besoins des utilisateurs en interfaces. Ainsi, deux étapes sont nécessaires avant l'analyse et le calcul d'indicateurs : la création d'une base de données SQLite au format GPKG et l'import des données terrain à analyser. </p>
+<p align="justify">Le Plugin a été pensé selon une logique de séparation des étapes de l'analyse et des besoins des utilisateurs en interfaces. Dans le menu déroulant du Plugin, disponible dans la liste de menus de QGIS s'il est correctement installé, ces étapes sont numérotées. De fait, deux étapes sont nécessaires avant l'analyse et le calcul d'indicateurs : la création d'une base de données SQLite au format GPKG et l'import des données terrain à analyser. Ces deux étapes sont fondamentales pour l'utilisation du Plugin puisqu'elles permettent de créer la donnée et de l'implémenter des données utilisées par la suite. </p>
+
+<p align="justify">Ensuite, l'utilisateur peut procéder à l'analyse. L'analyse biodiversité est l'étape 3a et l'analyse hydrologique est l'étape 3b. Elles sont toutes les deux indépendantes l'une de l'autre. L'étape 3b n'a pas besoin de l'étape 3a pour être réalisée. Ces deux étapes cherchent à produire des données finales, dont le format se veut adapté aux besoins des utilisateurs. Les données et formats de sortie ont d'ailleurs été discutés et réfléchis avec les premeirs futurs utilisateurs.</p>
+
+<p align="justify">Deux fenêtres complémentaires permettent à l'utilisateur d'en savoir plus sur le Plugin : la fenêtre "Aide" mène à la documentation et la febêtre "A propos" permet de connaître les grandes lignes concernant la construction du Plugin.</p>
 
 ## Utilisation
 
@@ -172,6 +176,19 @@ Pour installer le Plugin depuis GitHub :
 
 <p align="justify"> Il est vraiment important de noter qu'il s'agit là d'une estimation produite en fonction de la donnée altimétrique. Si celle-ci a des défaillances ou des erreurs de correspondance avec le terrain, l'algorithme ne saurait en être tenu responsable. De même, dans le cadre des marais, la donnée produite à partir du Plugin n'est pas en mesure de prendre en compte les connexions ou déconnexions entre les parcelles et les fossés. </p>
 
+#### Bonus : visualisation des données
+
+<p align="justify">Lors des discussions autour du Plugin, la question de produire une donnée pouvant être rapidement assimilée par n'importe quel utilisateur qui ne serait pas habitué à la manipulation de données géospatiales a été soulevée. Pour ce faire, une interface de visualisation a été décidée, permettant d'avoir accès à trois types de graphiques. Ces graphiques sont accessibles en cliquant sur le bouton "Visualisation" dans l'interface 1 et peuvent être visualisés en cliquant sur les boutons correspondants. Les graphiques peuvent par ailleurs être exportés, en PNG, PDF et SVG, et l'utilisateur choisit le nom de son fichier et son format. </p>
+
+<p align="justify">NB : pour avoir des données à visualiser, l'algorithme a besoin que l'utilisateur ait déjà généré un GPKG et qu'il n'ait pas quitté l'interface de création du GPKG. La visualisation ne peut s'effectuer que sur les données produites lors de l'analyse raster. </p>
+
+1. <img src="assets/img/bouton_visu.png" alt="bouton_acces_visualisation_data" width="500"/>
+
+2. <img src="assets/img/deciles.png" alt="visualisation_deciles" width="500"/>
+<img src="assets/img/surfaces.png" alt="visualisation_surfaces" width="500"/>
+<img src="assets/img/surfaces_sup10.png" alt="visualisation_surfaces_sup10cm" width="500"/>
+
+
 ### Import de données eau à la base de données SQLite
 
 #### Données en entrée
@@ -184,6 +201,7 @@ Pour installer le Plugin depuis GitHub :
 <li> un fichier .csv contenant les relevés eau 
 <br>
 <img src="assets/img/import_csv.png" alt="import_fichier_contenant_les_donnees_eau" width="500"/>
+<br>
 L'interface permet à l'utilisateur de renseigner les champs contenant les informations demandées : 
 <br>
 1. le champ contenant la date du relevé
