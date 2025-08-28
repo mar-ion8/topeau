@@ -2,7 +2,11 @@
 
 # Sommaire
 
+Voici un sommaire cliquable en markdown basé sur la structure de votre document :
+markdown# Sommaire
+
 - [Installation du Plugin](#installation-du-plugin)
+  - [En cas de problème](#en-cas-de-problème)
 - [Présentation du Plugin Top'Eau](#présentation-du-plugin-topeau)
   - [Genèse du Plugin](#genèse-du-plugin)
   - [Quels utilisateurs?](#quels-utilisateurs)
@@ -11,27 +15,27 @@
   - [Simulation de niveaux d'eau au sein d'une zone d'étude](#simulation-de-niveaux-deau-au-sein-dune-zone-détude)
     - [Données et variables en entrée](#données-et-variables-en-entrée)
     - [Données en sortie](#données-en-sortie)
-	- [Avertissement](#avertissement)
+    - [Avertissement](#avertissement)
+    - [Bonus : visualisation des données](#bonus--visualisation-des-données)
   - [Import de données eau à la base de données SQLite](#import-de-données-eau-à-la-base-de-données-sqlite)
-    - [Données en entrée](#données-en-entrée)
+    - [Données en entrée](#données-en-entrée-1)
     - [Données en sortie](#données-en-sortie-1)
   - [Analyse biodiversité](#analyse-biodiversité)
-    - [Données en entrée](#données-en-entrée-1)
+    - [Données en entrée](#données-en-entrée-2)
     - [Données en sortie](#données-en-sortie-2)
   - [Indicateurs et variables hydriques](#indicateurs-et-variables-hydriques)
-    - [Données en entrée](#données-en-entrée-2)
+    - [Données en entrée](#données-en-entrée-3)
     - [Données en sortie](#données-en-sortie-3)
   - [Aspect technique](#aspect-technique)
     - [Langages](#langages)
     - [Arborescence et fichiers de code](#arborescence-et-fichiers-de-code)
     - [Modules Python](#modules-python)
-	- [Fichiers PY (Fichiers de code, algorithmes)](#fichiers-py-fichiers-de-code-algorithmes)
-	- [Fichiers UI (Interfaces QT)](#fichiers-ui-interfaces-qt)
-	- [Fichiers QML (Fichiers de style)](#fichiers-qml-fichiers-de-style)
+    - [Fichiers UI (Interfaces QT)](#fichiers-ui-interfaces-qt)
+    - [Fichiers QML (Fichiers de style)](#fichiers-qml-fichiers-de-style)
 - [Annexes](#annexes)
   - [Collaborateurs](#collaborateurs)
-  - [Construction du Plugin](#construction-du-plugin)
   - [Sources](#sources)
+    - [Construction du Plugin](#construction-du-plugin)
     - [Sitographie](#sitographie)
     - [Rôle de l'IA](#rôle-de-lia)
 
@@ -76,16 +80,13 @@ Pour installer le Plugin depuis GitHub :
 
 ### Genèse du Plugin
 
-<p align="justify"> Dans le cadre de la Licence Professionnelle Topographie, Cartographie et Système d’Information Géographique (SIG), chaque étudiant est tenu, à l’issue des cours, de suivre un stage de 4 à 5 mois, afin de l’encourager à mettre en application au sein du milieu professionnel les connaissances et compétences acquises en cours, tout en lui permettant de bénéficier d’une insertion dans le monde professionnel. Pour mon stage, j’ai eu l’opportunité d’être encadrée par Mr <strong>Frédéric Pouget</strong> au sein de l’Université, et d’être accueillie par Mr <strong>Julien Ancelin</strong> au sein de l’Unité Expérimentale (UE) de Saint-Laurent-de-la-Prée (SLP), de l’Institut National de Recherche pour l’Agriculture, l’alimentation et l’Environnement (INRAE). Ce stage a été effectué dans le cadre des Volets de Recherche (VR) 1 et 2 du Projet MAVI, et s’est tenu du 14 avril 2025 au 22 août 2025. Le stage comportait trois grandes missions très techniques et utiles au sein de l’Unité et au sein du réseau d’UE créé autour des marais atlantiques. La première mission consistait à créer un MNT exploitable sur le site de Saint-Laurent-de-la-Prée et à comparer différentes sources de données altimétriques pour dresser un référentiel à l’échelle du Projet MAVI. La deuxième mission se concentrait autour de la création automatique d’un référentiel raster et attributaire lié à la simulation de niveaux d’eau dans chacune des parcelles des 5 sites. La troisième mission se tournait vers la création d’un outil permettant l’automatisation de calculs liés aux niveaux d’eau relevés dans les parcelles et fossés adjacents et aux dates de saisie. Puisque les deux et troisième missions se rejoignaient sur le principe de l’automatisation du processus, et de possibilité d’étendre à l’échelle de tous les sites du Projet MAVI, il a été décidé de créer un outil concentrant les deux processus.</p>
+<p align="justify"> Dans le cadre de la Licence Professionnelle Topographie, Cartographie et Système d’Information Géographique (SIG) de la Rochelle, sous la direction de <strong>Frédéric Pouget</strong>, chaque étudiant est tenu, à l’issue des cours, de suivre un stage de 4 à 5 mois, afin de l’encourager à mettre en application au sein du milieu professionnel les connaissances et compétences acquises en cours, tout en lui permettant de bénéficier d’une insertion dans le monde professionnel. Pour mon stage, j’ai eu l’opportunité d’être encadrée par <strong>Frédéric Pouget</strong> au sein de l’Université, et d’être accueillie par <strong>Julien Ancelin</strong>, administrateur SIG de l'UE SLP, au sein de l’Unité Expérimentale (UE) de Saint-Laurent-de-la-Prée (SLP), de l’Institut National de Recherche pour l’Agriculture, l’alimentation et l’Environnement (INRAE). Ce stage a été effectué dans le cadre des Volets de Recherche (VR) 1 et 2 du Projet MAVI, et s’est tenu du 14 avril 2025 au 22 août 2025. Le stage comportait trois grandes missions très techniques et utiles au sein de l’Unité et au sein du réseau d’UE créé autour des marais atlantiques. La première mission consistait à créer un MNT exploitable sur le site de Saint-Laurent-de-la-Prée et à comparer différentes sources de données altimétriques pour dresser un référentiel à l’échelle du Projet MAVI. La deuxième mission se concentrait autour de la création automatique d’un référentiel raster, vecteur et tabulaire lié à la simulation de niveaux d’eau dans chacune des parcelles des 5 sites. La troisième mission se tournait vers la création d’un outil permettant l’automatisation de calculs liés aux niveaux d’eau relevés dans les parcelles et fossés adjacents et aux dates de saisie. Puisque les deux et troisième missions se rejoignaient sur le principe de l’automatisation du processus, et de possibilité d’étendre à l’échelle de tous les sites du Projet MAVI, il a été décidé de créer un outil concentrant les deux processus.</p>
 
-<p align="justify">Le premier effort de recherche concernant l’automatisation s’est porté vers la création d’un Modeleur graphique QGIS, mais passer par un Modeleur s’est avéré moins efficace que prévu. En ce sens, au fur et à mesure des discussions avec <strong>Julien Ancelin</strong> et <strong>Lilia Mzali</strong>, il a été décidé de mettre en place un Plugin QGIS, codé en Python, avec plusieurs interfaces dédiées à chacune des étapes de l’analyse des données eau relevées par les bouées, les piézomètres ou les agents sur le terrain. Ces étapes comprennent, comme il sera détaillé en allant dans la notice, la création d’un GeoPackage contenant des informations raster et attributaires propres à chaque simulation de niveau d’eau dans une zone d’étude, l’import des données eau dans ces GeoPackage et les analyses. Pour satisfaire un plus grand nombre d’utilisateurs et de demandes, deux interfaces d’analyse ont été réalisées : une propre à l’écoute biodiversité, et une propre à la création d’indicateurs dédiés à la gestion de l’eau. </p>
+<p align="justify">Au fur et à mesure des discussions avec <strong>Julien Ancelin</strong> et <strong>Lilia Mzali</strong>, directrice de l'UE SLP spécialsiée dans la gestion de l'eau, il a été décidé de mettre en place un Plugin QGIS, codé en Python, avec plusieurs interfaces dédiées à chacune des étapes de l’analyse des données eau relevées par les bouées, les piézomètres ou les agents sur le terrain. Ces étapes comprennent, comme il sera détaillé en allant dans la notice, la création d’un GeoPackage contenant les informations raster, vecteur et tabulaires propres à chaque simulation de niveau d’eau dans une zone d’étude, l’import des données eau dans ces GeoPackage et les analyses. Pour satisfaire un plus grand nombre d’utilisateurs et de demandes, deux interfaces d’analyse ont été réalisées : une propre à l’écoute biodiversité, et une propre à la création d’indicateurs dédiés à la gestion de l’eau. </p>
 
-<p align="justify">Ces analyses ont été jugées comme nécessitant une forme d’automatisation car elles se doivent d’être répétées en fonction des espèces étudiées, des périodes de l’année, des différents types de relevés… et les calculs seraient longs et plus complexes sans ce Plugin et surtout sans la préparation des données proposée par le Plugin. Ces analyses sont effectuées dans le cadre du Projet MAVI mis en place par l’INRAE. Le Plugin a en ce sens vocation à pouvoir effectuer rapidement des traitements sur les différents sites expérimentaux du Projet MAVI, sans se préoccuper de la latence impliquée dans la distance entre les serveurs.</p>
+<p align="justify"> La demande à l’origine du Plugin était celle-ci : “proposer un outil géographique capable de calculer les variables clefs sur l’inondation/assèchement des parcelles en fonction des données de hauteur d’eau acquises, de la topographie et des liens entre la parcelle et les canaux, et d’avoir une lecture visuelle. [...] proposer un outil capable de quantifier les volumes d’eau dans les canaux et sur les parcelles en fonction des hauteurs d’eau enregistrées.” (<i>Proposition de stage de Master 1 / Licence Pro - année 2024-2025</i>, soumise par <strong>Julien Ancelin</strong> auprès de <strong>Frédéric Pouget</strong>). Au fur et à mesure de la définition des besoins et objectifs, il a été convenu de répondre à ces demandes en créant un Plugin avec de multiples interfaces dédiées à la création d’une bibliothèque raster, vecteur et tabulaire permettant de visualiser l’inondation des parcelles et de connaître les surfaces et volumes d’inondation en fonction de classes, l’import de données terrain et l’analyse de données existantes. Ces analyses ont été jugées comme nécessitant une forme d’automatisation car elles se doivent d’être répétées en fonction des espèces étudiées, des données altimétriques mises à disposition au fur et à mesure de l’année, des différents types de relevés… et les calculs seraient longs et plus complexes sans le Plugin et surtout sans la préparation des données proposée par le Plugin <i>via</i> la création du GPKG.</p>
 
-<p align="justify">La demande à l’origine du Plugin était celle-ci : “proposer un outil géographique capable de calculer les variables clefs sur l’inondation/assèchement des parcelles en fonction des données de hauteur d’eau acquises, de la topographie et des liens entre la parcelle et les canaux, et d’avoir une lecture visuelle. [...] proposer un outil capable de quantifier les volumes d’eau dans les canaux et sur les parcelles en fonction des hauteurs d’eau enregistrées.” (<i>Proposition de stage de Master 1 / Licence Pro - année 2024-2025</i>, soumise par <strong>Julien Ancelin</strong> auprès de <strong>Frédéric Pouget</strong>). Au fur et à mesure de la définition des besoins et objectifs, il a été convenu de répondre à ces demandes en créant un Plugin avec de multiples interfaces dédiées à la création d’une bibliothèque raster et attributaire permettant de visualiser l’inondation des parcelles et de connaître les surfaces et volumes d’inondation en fonction de classes, l’import de données terrain et l’analyse de données existantes. </p>
-
-<p align="justify">La construction du Plugin s’est reposée sur de nombreuses discussions avec les membres de l’UE qui seraient les premiers utilisateurs (<strong>Lilia Mzali</strong>, <strong>Vincent Boutifard</strong> et <strong>Isis Binam</strong>), et <strong>Julien Ancelin</strong>, qui a encadré toute la partie technique et faisabilité de la solution. </p>
-
+<p align="justify">La construction du Plugin s’est reposée sur de nombreuses discussions avec les membres de l’UE qui seraient les premiers utilisateurs (<strong>Lilia Mzali</strong>, <strong>Vincent Boutifard</strong>, coordinateur du Projet MAVI et ingénieur d'études au sein de l'UE SLP, et <strong>Isis Binam</strong>, stagiaire intervenue dans le cadre des VR1 & 2 du Projet MAVI), et <strong>Julien Ancelin</strong>, qui a encadré toute la partie technique et faisabilité de la solution. </p>
 
 ### Quels utilisateurs?
 
@@ -359,8 +360,6 @@ Ce choix est réservé aux utilisateurs ayant des relevés qu'ils désirent anal
 | seaborn         | Ce module permet l'accès à des fonctions de visualisation de données (dont la création de graphiques complexes) |
 | matplotlib      | Ce module permet l'accès à des fonctions de visualisation de données (dont la création de graphiques) |
 | math      | Ce module donne accès à un grand nombre de fonctions et variables mathématiques permettant de réaliser un grand nombre de calculs mathématiques |
-
-#### Fichier PY (Fichiers de code, algorithmes)
 
 #### Fichiers UI (Interfaces QT)
 
