@@ -22,7 +22,7 @@ class CalculWidget(QDialog, form_traitement):
         QDialog.__init__(self)
 
         self.setupUi(self) # création de l'interface de la fenêtre QGIS
-        self.setWindowTitle("Top'Eau - Analyse des données eau : écoute biodiversité") # nom donné à la fenêtre
+        self.setWindowTitle("Top'Eau - Analyse des données eau : indicateurs pour la gestion de l'eau") # nom donné à la fenêtre
         self.terminer.rejected.connect(self.reject) # Bouton "OK / Annuler"
         self.calcJour.clicked.connect(self.calculs_journaliers) # Bouton "Calculer mes données journalières"
         self.calcMois.clicked.connect(self.calculs_mensuels)  # Bouton "Calculer mes données mensuelles"
